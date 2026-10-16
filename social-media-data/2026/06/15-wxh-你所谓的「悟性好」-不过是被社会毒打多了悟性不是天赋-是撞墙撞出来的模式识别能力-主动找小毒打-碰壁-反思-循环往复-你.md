@@ -6,7 +6,7 @@ type: "article"
 title: "你所谓的「悟性好」，不过是被社会毒打多了\n\n悟性不是天赋，是撞墙撞出来的模式识别能力。主动找小毒打，碰壁、反思、循环往复，你"
 url: "https://mp.weixin.qq.com/s/g2WvvpdF8UdcE8AjHq3RJw"
 original_date: "2026-06-15T09:30:00.000Z"
-collected_at: "2026-10-03T07:54:48.762Z"
+collected_at: "2026-10-09T11:40:31.019Z"
 author_username: "kamaleizhang"
 author_display_name: "散人张磊"
 tags:

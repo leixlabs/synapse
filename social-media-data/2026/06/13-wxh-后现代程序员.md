@@ -6,7 +6,7 @@ type: "image"
 title: "后现代程序员"
 url: "https://mp.weixin.qq.com/s/lnosK8VMP2jLrLbIEFVvog"
 original_date: "2026-06-13T11:39:25.000Z"
-collected_at: "2026-10-03T07:54:48.762Z"
+collected_at: "2026-10-08T07:45:11.036Z"
 author_username: "kamaleizhang"
 author_display_name: "散人张磊"
 images:

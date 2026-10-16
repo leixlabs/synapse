@@ -6,7 +6,7 @@ type: "article"
 title: "别人突然对你好？小心！这可能是坑你的开始\n\n当一个人突然对你好，你的第一反应不应该是感动，而是警惕。识别职场中披着善意的陷阱"
 url: "https://mp.weixin.qq.com/s/YESG0EJqa1J1cYOCJXjLAg"
 original_date: "2026-06-15T09:13:43.000Z"
-collected_at: "2026-10-03T07:54:48.762Z"
+collected_at: "2026-10-08T07:45:11.036Z"
 author_username: "kamaleizhang"
 author_display_name: "散人张磊"
 tags:
