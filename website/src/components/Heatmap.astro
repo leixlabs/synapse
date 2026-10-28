@@ -7,62 +7,99 @@ const { data } = Astro.props;
 const serializedData = JSON.stringify(data);
 ---
 
-<div class="heatmap-card" id="heatmap-root" data-activity={serializedData}>
-  <div class="heatmap-header">
-    <span class="section-label">Activity</span>
-    <div class="year-selector">
-      <button id="heatmap-prev" class="nav-btn material-symbols-outlined"
-        >chevron_left</button
+<section class="heatmap" id="heatmap-root" data-activity={serializedData}>
+  <div class="heatmap-head">
+    <span class="eyebrow">Activity</span>
+    <div class="year-switch">
+      <button
+        id="heatmap-prev"
+        class="year-btn"
+        type="button"
+        aria-label="Previous year"
       >
-      <span id="heatmap-year-display" class="year-display"></span>
-      <button id="heatmap-next" class="nav-btn material-symbols-outlined"
-        >chevron_right</button
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M14.5 6.5 9 12l5.5 5.5"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </button>
+      <span id="heatmap-year-display" class="year-display mono"></span>
+      <button
+        id="heatmap-next"
+        class="year-btn"
+        type="button"
+        aria-label="Next year"
       >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path
+            d="M9.5 6.5 15 12l-5.5 5.5"
+            stroke="currentColor"
+            stroke-width="1.7"
+            stroke-linecap="round"
+            stroke-linejoin="round"></path>
+        </svg>
+      </button>
     </div>
   </div>
 
-  <div class="heatmap-content">
-    <div class="heatmap-wrapper">
-      <div class="heatmap-labels" aria-hidden="true">
-        <span>Sun</span>
-        <span>Mon</span>
-        <span>Tue</span>
-        <span>Wed</span>
-        <span>Thu</span>
-        <span>Fri</span>
-        <span>Sat</span>
+  <div class="heatmap-scroll">
+    <div class="heatmap-cal">
+      <div class="heatmap-weekdays" aria-hidden="true">
+        <span></span><span>Mon</span><span></span><span>Wed</span><span></span
+        ><span>Fri</span><span></span>
       </div>
-
-      <div class="heatmap-grid" id="heatmap-grid">
-        <!-- Grid injected by script -->
+      <div class="heatmap-plot">
+        <div class="heatmap-months" id="heatmap-months" aria-hidden="true"></div>
+        <div class="heatmap-grid" id="heatmap-grid">
+          <!-- Grid injected by script -->
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="heatmap-footer">
+  <div class="heatmap-foot">
     <span id="heatmap-total-text" class="heatmap-total"></span>
     <div class="heatmap-legend">
-      <span class="text-tiny">Less</span>
+      <span class="legend-label">Less</span>
       <div class="heatmap-day level-0"></div>
       <div class="heatmap-day level-1"></div>
       <div class="heatmap-day level-2"></div>
       <div class="heatmap-day level-3"></div>
       <div class="heatmap-day level-4"></div>
-      <span class="text-tiny">More</span>
+      <span class="legend-label">More</span>
     </div>
   </div>
 
   <div id="heatmap-tooltip" class="heatmap-tooltip hidden"></div>
-</div>
+</section>
 
 <script>
   const root = document.getElementById("heatmap-root");
   const grid = document.getElementById("heatmap-grid");
+  const monthsEl = document.getElementById("heatmap-months");
   const yearDisplay = document.getElementById("heatmap-year-display");
   const prevBtn = document.getElementById("heatmap-prev");
   const nextBtn = document.getElementById("heatmap-next");
   const totalText = document.getElementById("heatmap-total-text");
   const tooltip = document.getElementById("heatmap-tooltip");
+
+  const MONTHS = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+  ];
 
   if (root && grid && yearDisplay) {
     const rawData = JSON.parse(root.getAttribute("data-activity") || "[]");
@@ -81,6 +118,7 @@ const serializedData = JSON.stringify(data);
       .sort((a, b) => b - a);
     let currentYearIndex = 0;
     let selectedDate = "";
+    let didInitialScroll = false;
 
     function getLevel(count: number): number {
       if (count <= 0) return 0;
@@ -93,6 +131,28 @@ const serializedData = JSON.stringify(data);
     // Helper for generating local YYYY-MM-DD strings
     function getDateKey(year: number, month: number, day: number) {
       return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    }
+
+    function renderMonths(weeks: any[][]) {
+      if (!monthsEl) return;
+      const labels: { i: number; label: string }[] = [];
+      let lastMonth = -1;
+      let lastIndex = -10;
+
+      weeks.forEach((week, i) => {
+        const first = week.find((d) => d.date);
+        if (!first) return;
+        const m = parseInt(first.date.slice(5, 7), 10);
+        if (m !== lastMonth && i - lastIndex >= 2) {
+          labels.push({ i, label: MONTHS[m - 1] });
+          lastMonth = m;
+          lastIndex = i;
+        }
+      });
+
+      monthsEl.innerHTML = labels
+        .map((l) => `<span style="--i:${l.i}">${l.label}</span>`)
+        .join("");
     }
 
     function renderHeatmap() {
@@ -155,13 +215,23 @@ const serializedData = JSON.stringify(data);
             html += `<div class="heatmap-day level-empty"></div>`;
           } else {
             const isSelected = day.date === selectedDate;
-            html += `<div class="heatmap-day level-${getLevel(day.count)} ${isSelected ? 'selected' : ''}" data-date="${day.date}" data-count="${day.count}"></div>`;
+            html += `<div class="heatmap-day level-${getLevel(day.count)} ${isSelected ? "selected" : ""}" data-date="${day.date}" data-count="${day.count}"></div>`;
           }
         });
         html += `</div>`;
       });
 
       grid!.innerHTML = html;
+      renderMonths(weeks);
+
+      // On narrow screens the calendar overflows: start at the most recent week.
+      if (!didInitialScroll) {
+        didInitialScroll = true;
+        const scroller = root.querySelector(".heatmap-scroll");
+        if (scroller && scroller.scrollWidth > scroller.clientWidth + 4) {
+          scroller.scrollLeft = scroller.scrollWidth;
+        }
+      }
 
       // Tooltip and Click listeners
       const dayEls = grid!.querySelectorAll(".heatmap-day[data-date]");
@@ -170,14 +240,14 @@ const serializedData = JSON.stringify(data);
           const date = el.getAttribute("data-date");
           const count = el.getAttribute("data-count");
           if (!date || !tooltip) return;
-          tooltip.textContent = `${date}: ${count} thought${count !== "1" ? "s" : ""}`;
+          tooltip.textContent = `${date} · ${count} thought${count !== "1" ? "s" : ""}`;
           tooltip.classList.remove("hidden");
         });
 
         el.addEventListener("mousemove", (e: any) => {
           if (!tooltip) return;
-          tooltip.style.left = `${e.clientX + 10}px`;
-          tooltip.style.top = `${e.clientY - 30}px`;
+          tooltip.style.left = `${e.clientX + 12}px`;
+          tooltip.style.top = `${e.clientY - 32}px`;
         });
 
         el.addEventListener("mouseleave", () =>
@@ -188,11 +258,7 @@ const serializedData = JSON.stringify(data);
           const date = el.getAttribute("data-date");
           if (!date) return;
 
-          if (selectedDate === date) {
-            selectedDate = "";
-          } else {
-            selectedDate = date;
-          }
+          selectedDate = selectedDate === date ? "" : date;
 
           renderHeatmap();
 
@@ -228,237 +294,215 @@ const serializedData = JSON.stringify(data);
 </script>
 
 <style is:global>
-  .heatmap-card {
-    background: var(--md-surface-container-low);
+  /* Global on purpose: the calendar cells are injected at runtime and would not
+     carry Astro's scoped data attribute. Every selector is namespaced. */
+  .heatmap {
+    --hm-cell: 11px;
+    --hm-gap: 3px;
+    border: 1px solid var(--rule);
     border-radius: var(--radius-lg);
-    border: 1px solid var(--md-outline-variant);
-    padding: var(--space-4);
+    background: var(--paper-raised);
+    padding: 18px 20px 16px;
     max-width: 100%;
-    overflow: hidden;
   }
 
-  .heatmap-card .heatmap-header {
+  .heatmap-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: var(--space-4);
+    margin-bottom: 16px;
   }
 
-  .heatmap-card .section-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    color: var(--md-on-surface-variant);
-    letter-spacing: 0.05em;
-  }
-
-  .heatmap-card .year-selector {
+  .year-switch {
     display: flex;
     align-items: center;
-    gap: var(--space-1);
-    background: var(--md-surface-container-highest);
-    padding: 2px 6px;
-    border-radius: var(--radius-full);
+    gap: 2px;
   }
 
-  .heatmap-card .year-display {
-    font-size: 0.875rem;
-    font-weight: 600;
-    min-width: 40px;
+  .year-display {
+    min-width: 42px;
     text-align: center;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: 0.06em;
   }
 
-  .heatmap-card .nav-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
-    font-size: 1.125rem;
-    color: var(--md-on-surface-variant);
-    padding: 2px;
+  .year-btn {
+    display: grid;
+    place-items: center;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    color: var(--ink-faint);
+    transition: color 0.18s ease, background-color 0.18s ease;
   }
 
-  .heatmap-card .nav-btn:hover:not(:disabled) {
-    color: var(--md-primary);
+  .year-btn svg {
+    width: 15px;
+    height: 15px;
   }
 
-  .heatmap-card .nav-btn:disabled {
-    opacity: 0.3;
+  .year-btn:hover:not(:disabled) {
+    color: var(--ink);
+    background: var(--paper-sunken);
   }
 
-  .heatmap-card .heatmap-content {
-    overflow: visible;
-    min-width: 0;
-  }
-
-  .heatmap-card .heatmap-wrapper {
-    display: flex;
-    gap: var(--space-3);
-    overflow-x: auto;
-    overflow-y: visible;
-    padding-bottom: var(--space-2);
-    scrollbar-width: thin;
-    scrollbar-color: var(--md-outline-variant) transparent;
-    max-width: 100%;
-  }
-
-  @media (min-width: 768px) {
-    .heatmap-card .heatmap-wrapper {
-      scrollbar-width: none;
-    }
-    .heatmap-card .heatmap-wrapper::-webkit-scrollbar {
-      display: none;
-    }
-  }
-
-  .heatmap-card .heatmap-wrapper::-webkit-scrollbar {
-    height: 6px;
-  }
-
-  .heatmap-card .heatmap-wrapper::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .heatmap-card .heatmap-wrapper::-webkit-scrollbar-thumb {
-    background: var(--md-outline-variant);
-    border-radius: 3px;
-  }
-
-  .heatmap-card .heatmap-wrapper::-webkit-scrollbar-thumb:hover {
-    background: var(--md-outline);
-  }
-
-  .heatmap-card .heatmap-labels {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    font-size: 10px;
-    color: var(--md-on-surface-variant);
-    padding-top: 2px;
-    position: sticky;
-    left: 0;
-    background: var(--md-surface-container-low);
-    z-index: 5;
-  }
-
-  .heatmap-card .heatmap-labels span {
-    height: 12px;
-    line-height: 12px;
-  }
-
-  .heatmap-card .heatmap-labels span:nth-child(even) {
-    visibility: hidden;
-  }
-
-  .heatmap-card .heatmap-grid {
-    display: flex;
-    gap: 3px;
-  }
-
-  .heatmap-card .heatmap-week {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    flex-shrink: 0;
-  }
-
-  .heatmap-card .heatmap-day {
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    background: var(--heatmap-0);
-    transition: transform 0.1s;
-    cursor: pointer;
-  }
-
-  @media (max-width: 640px) {
-    .heatmap-card .heatmap-day {
-      width: 10px;
-      height: 10px;
-    }
-    .heatmap-card .heatmap-labels span {
-      height: 10px;
-      line-height: 10px;
-    }
-    .heatmap-card .heatmap-grid,
-    .heatmap-card .heatmap-week,
-    .heatmap-card .heatmap-labels {
-      gap: 2px;
-    }
-  }
-
-  .heatmap-card .heatmap-day.level-empty {
-    visibility: hidden;
-  }
-
-  .heatmap-card .heatmap-day:hover:not(.level-empty) {
-    transform: scale(1.4);
-    z-index: 10;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-  }
-
-  .heatmap-card .heatmap-day.selected {
-    outline: 2px solid var(--md-primary);
-    outline-offset: 1px;
-    z-index: 10;
-    transform: scale(1.2);
-  }
-
-  .heatmap-card .heatmap-day.level-1 {
-    background: var(--heatmap-1);
-  }
-  .heatmap-card .heatmap-day.level-2 {
-    background: var(--heatmap-2);
-  }
-  .heatmap-card .heatmap-day.level-3 {
-    background: var(--heatmap-3);
-  }
-  .heatmap-card .heatmap-day.level-4 {
-    background: var(--heatmap-4);
-  }
-
-  .heatmap-card .heatmap-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: var(--space-4);
-    padding-top: var(--space-2);
-    border-top: 1px solid var(--md-outline-variant);
-  }
-
-  .heatmap-card .heatmap-total {
-    font-size: 0.75rem;
-    color: var(--md-on-surface-variant);
-  }
-
-  .heatmap-card .heatmap-legend {
-    display: flex;
-    align-items: center;
-    gap: 3px;
-  }
-
-  .heatmap-card .heatmap-legend .heatmap-day {
-    width: 10px;
-    height: 10px;
+  .year-btn:disabled {
+    opacity: 0.25;
     cursor: default;
   }
 
-  .heatmap-card .text-tiny {
-    font-size: 10px;
-    color: var(--md-on-surface-variant);
-    opacity: 0.7;
+  .heatmap-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+
+  .heatmap-cal {
+    display: flex;
+    gap: 8px;
+    width: max-content;
+  }
+
+  .heatmap-weekdays {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hm-gap);
+    padding-top: 18px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    position: sticky;
+    left: 0;
+    background: var(--paper-raised);
+    z-index: 2;
+    padding-right: 2px;
+  }
+
+  .heatmap-weekdays span {
+    height: var(--hm-cell);
+    line-height: var(--hm-cell);
+  }
+
+  .heatmap-plot {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .heatmap-months {
+    position: relative;
+    height: 14px;
+    margin-bottom: 4px;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .heatmap-months span {
+    position: absolute;
+    top: 0;
+    left: calc(var(--i) * (var(--hm-cell) + var(--hm-gap)));
+    white-space: nowrap;
+  }
+
+  .heatmap-grid {
+    display: flex;
+    gap: var(--hm-gap);
+  }
+
+  .heatmap-week {
+    display: flex;
+    flex-direction: column;
+    gap: var(--hm-gap);
+    flex: none;
+  }
+
+  .heatmap-day {
+    width: var(--hm-cell);
+    height: var(--hm-cell);
+    border-radius: 2px;
+    background: var(--hm-0);
+    transition: transform 0.12s ease, box-shadow 0.12s ease;
+    cursor: pointer;
+  }
+
+  .heatmap-day.level-empty {
+    visibility: hidden;
+  }
+
+  .heatmap-day:hover:not(.level-empty) {
+    transform: scale(1.35);
+    box-shadow: 0 0 0 1px var(--ink);
+    z-index: 5;
+  }
+
+  .heatmap-day.selected {
+    box-shadow: 0 0 0 1.5px var(--ink);
+    transform: scale(1.15);
+  }
+
+  .heatmap-day.level-1 {
+    background: var(--hm-1);
+  }
+  .heatmap-day.level-2 {
+    background: var(--hm-2);
+  }
+  .heatmap-day.level-3 {
+    background: var(--hm-3);
+  }
+  .heatmap-day.level-4 {
+    background: var(--hm-4);
+  }
+
+  .heatmap-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    letter-spacing: 0.06em;
+    color: var(--ink-faint);
+  }
+
+  .heatmap-legend {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .heatmap-legend .heatmap-day {
+    width: 9px;
+    height: 9px;
+    cursor: default;
+  }
+
+  .heatmap-legend .heatmap-day:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .legend-label {
+    margin: 0 3px;
   }
 
   .heatmap-tooltip {
     position: fixed;
-    background: var(--md-on-surface);
-    color: var(--md-surface);
-    padding: var(--space-1) var(--space-2);
-    border-radius: 4px;
-    font-size: 0.75rem;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.03em;
     pointer-events: none;
     z-index: 1000;
     white-space: nowrap;
@@ -469,9 +513,19 @@ const serializedData = JSON.stringify(data);
     display: none !important;
   }
 
-  @media (max-width: 600px) {
-    .heatmap-card .heatmap-labels {
+  @media (max-width: 720px) {
+    .heatmap {
+      --hm-cell: 10px;
+      --hm-gap: 2px;
+      padding: 14px 14px 12px;
+    }
+
+    .heatmap-weekdays {
       display: none;
+    }
+
+    .heatmap-weekdays + .heatmap-plot {
+      padding-top: 0;
     }
   }
 </style>

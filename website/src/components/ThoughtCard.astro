@@ -1,5 +1,6 @@
 ---
 import type { Thought } from "../lib/thoughts-data";
+import { sourceMeta } from "../lib/sources";
 
 interface Props {
   thought: Thought;
@@ -7,36 +8,64 @@ interface Props {
 
 const { thought } = Astro.props;
 
-const sourceClass = thought.source.toLowerCase();
+const meta = sourceMeta(thought.source);
+const content = thought.content ?? "";
+const images = thought.images ?? [];
+const videos = thought.videos ?? [];
+const tags = thought.tags ?? [];
+const mediaCount = images.length + videos.length;
+const hasOriginal =
+  !!thought.originalUrl &&
+  (thought.originalUrl.startsWith("https://") ||
+    thought.originalUrl.startsWith("http://"));
+
 const formattedDate = new Date(thought.originalDate).toLocaleDateString(
   "en-US",
-  {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  },
+  { year: "numeric", month: "short", day: "numeric" },
 );
 const dateISO = thought.originalDate.split("T")[0];
 ---
 
-<article class="thought-card" data-date={dateISO}>
-  <header class="card-header">
-    <span class={`badge ${sourceClass}`}>{thought.source}</span>
-    <time datetime={thought.originalDate} class="text-muted text-small">
-      {formattedDate}
-    </time>
+<article class="thought-card" data-date={dateISO} data-source={thought.source.toLowerCase()}>
+  <header class="card-meta">
+    <span class={`source source-${meta.key}`} style={`--dot: ${meta.color}`}>
+      <span class="source-dot" aria-hidden="true"></span>{meta.label}
+    </span>
+    <span class="meta-sep" aria-hidden="true">·</span>
+    <time datetime={thought.originalDate}>{formattedDate}</time>
+    {
+      hasOriginal && (
+        <a
+          class="entry-link"
+          href={thought.originalUrl}
+          target="_blank"
+          rel="noopener"
+          aria-label="Open original post in a new tab"
+        >
+          <span>Original</span>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path
+              d="M7 17 17 7M17 7H9m8 0v8"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </a>
+      )
+    }
   </header>
 
-  <div class="card-content">
-    <p>{thought.content}</p>
-
+  <div class="card-body">
+    {content && <p>{content}</p>}
     {
-      (thought.images.length > 0 || thought.videos.length > 0) && (
-        <div class="card-media">
-          {thought.images.map((img) => (
-            <img src={img} alt="" loading="lazy" />
+      mediaCount > 0 && (
+        <div class="card-media" data-count={mediaCount}>
+          {images.map((img) => (
+            <img src={img} alt="" loading="lazy" decoding="async" />
           ))}
-          {thought.videos.map((vid) => (
+          {videos.map((vid) => (
             <video src={vid} controls preload="none" />
           ))}
         </div>
@@ -44,31 +73,13 @@ const dateISO = thought.originalDate.split("T")[0];
     }
   </div>
 
-  <footer class="card-footer">
-    {
-      thought.tags.length > 0 && (
-        <div class="card-tags">
-          {thought.tags.map((tag) => (
-            <span class="tag">#{tag}</span>
-          ))}
-        </div>
-      )
-    }
-    {
-      thought.originalUrl &&
-        (thought.originalUrl.startsWith("https://") || thought.originalUrl.startsWith("http://")) &&
-        (
-          <a
-            href={thought.originalUrl}
-            target="_blank"
-            rel="noopener"
-            class="original-link"
-          >
-            View original →
-          </a>
-        )
-    }
-  </footer>
+  {
+    tags.length > 0 && (
+      <footer class="card-foot">
+        {tags.map((tag) => (
+          <span class="tag">{tag}</span>
+        ))}
+      </footer>
+    )
+  }
 </article>
-
-<!-- Styles moved to global.css to support dynamic rendering -->

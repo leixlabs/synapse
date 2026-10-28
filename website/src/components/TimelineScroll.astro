@@ -5,6 +5,21 @@ interface Props {
 
 const { thoughts } = Astro.props;
 
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
 // Group by Year -> Month
 const timelineMap = new Map<string, Set<number>>();
 
@@ -28,10 +43,10 @@ const timeline = Array.from(timelineMap.entries())
   .sort((a, b) => parseInt(b.year) - parseInt(a.year)); // Descending years
 ---
 
-<nav class="timeline-scroll" id="timeline-scroll" aria-label="Timeline Navigation">
+<nav class="timeline-scroll" id="timeline-scroll" aria-label="Archive timeline">
   <div class="timeline-track">
-    <button class="timeline-item recent active" data-target="top" title="Recent">
-      <span class="label">Recent</span>
+    <button class="timeline-item recent active" data-target="top" title="Jump to latest">
+      <span class="label">Latest</span>
     </button>
 
     {
@@ -48,7 +63,7 @@ const timeline = Array.from(timelineMap.entries())
                 data-year={group.year}
                 data-month={month}
               >
-                <span class="label">{month}月</span>
+                <span class="label">{MONTHS[month - 1]}</span>
               </button>
             ))}
           </div>
@@ -61,8 +76,6 @@ const timeline = Array.from(timelineMap.entries())
 <script>
   const timeline = document.getElementById("timeline-scroll");
   const items = timeline?.querySelectorAll(".timeline-item");
-  let isManualScrolling = false;
-  let scrollTimeout: any;
 
   // Handle clicks
   items?.forEach((item) => {
@@ -70,7 +83,7 @@ const timeline = Array.from(timelineMap.entries())
       e.stopPropagation(); // Prevent bubbling
       const target = item.getAttribute("data-target");
       const year = item.getAttribute("data-year");
-      
+
       // Update active state manually
       updateActiveState(item as HTMLElement);
 
@@ -79,17 +92,19 @@ const timeline = Array.from(timelineMap.entries())
         new CustomEvent("timeline-jump", {
           detail: {
             target,
-            year: item.parentElement?.getAttribute('data-year') || year,
+            year: item.parentElement?.getAttribute("data-year") || year,
             month: item.getAttribute("data-month"),
           },
         }),
       );
-      
+
       // Expand year if needed
       if (item.classList.contains("year")) {
-         const group = item.closest(".timeline-year-group");
-         document.querySelectorAll(".timeline-year-group").forEach(g => g.classList.remove("expanded"));
-         group?.classList.add("expanded");
+        const group = item.closest(".timeline-year-group");
+        document
+          .querySelectorAll(".timeline-year-group")
+          .forEach((g) => g.classList.remove("expanded"));
+        group?.classList.add("expanded");
       }
     });
   });
@@ -97,18 +112,21 @@ const timeline = Array.from(timelineMap.entries())
   function updateActiveState(activeItem: HTMLElement) {
     items?.forEach((i) => i.classList.remove("active"));
     activeItem.classList.add("active");
-    
+
     // Handle expansion
-    document.querySelectorAll(".timeline-year-group").forEach(g => g.classList.remove("expanded"));
-    if (activeItem.classList.contains("month") || activeItem.classList.contains("year")) {
+    document
+      .querySelectorAll(".timeline-year-group")
+      .forEach((g) => g.classList.remove("expanded"));
+    if (
+      activeItem.classList.contains("month") ||
+      activeItem.classList.contains("year")
+    ) {
       activeItem.closest(".timeline-year-group")?.classList.add("expanded");
     }
   }
 
   // Listen for scroll updates from main page (Scroll Spy)
   window.addEventListener("timeline-scroll-spy", (e: any) => {
-    if (isManualScrolling) return;
-
     const { year, month } = e.detail;
     let selector = "";
 
@@ -125,121 +143,144 @@ const timeline = Array.from(timelineMap.entries())
       updateActiveState(activeItem as HTMLElement);
     }
   });
-
 </script>
 
 <style>
   .timeline-scroll {
-    position: fixed;
-    right: var(--space-4);
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    padding: var(--space-2);
-    /* backdrop-filter: blur(4px); */
-  }
-  
-  @media (max-width: 1200px) {
-    .timeline-scroll {
-      display: none; /* Hide on smaller screens */
-    }
+    position: sticky;
+    top: calc(var(--header-h) + 44px);
+    padding-bottom: var(--space-8);
   }
 
   .timeline-track {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
-    position: relative;
-    padding-right: var(--space-2);
-    border-right: 2px solid var(--md-surface-container-highest);
+    gap: 1px;
+    border-left: 1px solid var(--rule);
   }
 
   .timeline-item {
-    background: none;
-    border: none;
-    cursor: pointer;
-    text-align: right;
-    padding: 4px 8px;
-    color: var(--md-on-surface-variant);
-    font-size: 0.75rem;
-    transition: all 0.2s ease;
-    border-radius: 4px;
     position: relative;
+    display: block;
+    width: 100%;
+    padding: 5px 0 5px 17px;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    transition: color 0.18s ease;
     white-space: nowrap;
-    opacity: 0.6;
+  }
+
+  .timeline-item::before {
+    content: "";
+    position: absolute;
+    left: -3px;
+    top: 50%;
+    translate: 0 -50%;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--paper);
+    border: 1px solid var(--rule-strong);
+    transition: background-color 0.18s ease, border-color 0.18s ease,
+      box-shadow 0.18s ease;
   }
 
   .timeline-item:hover {
-    opacity: 1;
-    color: var(--md-primary);
+    color: var(--ink);
+  }
+
+  .timeline-item:hover::before {
+    border-color: var(--accent);
   }
 
   .timeline-item.active {
-    opacity: 1;
-    color: var(--md-on-primary-container);
-    background: var(--md-secondary-container);
-    font-weight: 600;
+    color: var(--ink);
+    font-weight: 500;
   }
-  
-  .timeline-item.active::after {
-    content: '';
-    position: absolute;
-    right: -10px; /* Overlap the border */
-    top: 50%;
-    transform: translateY(-50%);
-    width: 4px;
-    height: 16px;
-    background: var(--md-primary);
-    border-radius: 2px;
+
+  .timeline-item.active::before {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-wash);
   }
 
   .timeline-item.recent {
-    font-weight: 600;
-    font-size: 0.875rem;
-    margin-bottom: var(--space-2);
+    margin-bottom: var(--space-4);
+    color: var(--ink-muted);
+    letter-spacing: 0.12em;
+  }
+
+  .timeline-item.recent.active {
+    color: var(--accent);
   }
 
   .timeline-year-group {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
   }
 
   .timeline-item.year {
-    font-weight: 600;
-    font-size: 0.875rem;
+    font-family: var(--font-serif);
+    font-size: 0.9375rem;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-muted);
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .timeline-item.year.active {
+    color: var(--ink);
+  }
+
+  .timeline-item.year::before {
+    width: 6px;
+    height: 6px;
+    left: -3.5px;
   }
 
   .timeline-months {
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
     height: 0;
     overflow: hidden;
     opacity: 0;
-    transition: all 0.3s ease;
-    border-right: 1px solid transparent; 
+    transition: height 0.28s ease, opacity 0.2s ease, padding 0.28s ease;
   }
 
   .timeline-year-group.expanded .timeline-months {
     height: auto;
     opacity: 1;
-    padding-top: 4px;
+    padding-top: 2px;
     padding-bottom: 8px;
   }
-  
+
   .timeline-item.month {
-    font-size: 0.75rem;
-    padding: 2px 8px;
-    margin-right: 4px;
-  }
-  
-  /* Connecting line for months? Optional, mimicking screenshot */
-  .timeline-year-group.expanded .timeline-months {
-    /* visual cue */
+    font-size: 0.625rem;
+    padding: 3px 0 3px 17px;
+    color: var(--ink-faint);
   }
 
+  .timeline-item.month::before {
+    width: 3px;
+    height: 3px;
+    left: -2px;
+    border: 0;
+    background: var(--rule-strong);
+  }
+
+  .timeline-item.month.active {
+    color: var(--ink-soft);
+  }
+
+  .timeline-item.month.active::before {
+    background: var(--accent);
+    width: 5px;
+    height: 5px;
+    left: -3px;
+  }
 </style>
