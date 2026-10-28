@@ -13,7 +13,6 @@ images:
   - "images/1f13464001bff5fb_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 1184
 ---
 
 [视频] 告别塑料感！五层架构带你搞定AI时代的高级感UI设计 

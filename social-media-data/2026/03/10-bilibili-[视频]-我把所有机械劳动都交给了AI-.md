@@ -13,7 +13,6 @@ images:
   - "images/967bfbe4ce794a8f_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 634
 ---
 
 [视频] 我把所有机械劳动都交给了AI！深度拆解我的全自动化技能库 

@@ -6,17 +6,13 @@ type: "article"
 title: "如果没有AI 2026年是什么样\n\n2026-bigtech-infrastructure"
 url: "https://mp.weixin.qq.com/s/ioPlRXhprwBixFj-OJdhow"
 original_date: "2026-10-02T10:03:27.000Z"
-collected_at: "2026-10-09T11:40:31.019Z"
+collected_at: "2026-10-28T08:46:36.737Z"
 author_username: "kamaleizhang"
 author_display_name: "散人张磊"
 images:
   - "images/0fca5198353bd289_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 104
-engagement_likes: 1
-engagement_comments: 0
-engagement_reposts: 1
 ---
 
 如果没有AI 2026年是什么样

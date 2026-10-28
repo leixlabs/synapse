@@ -15,10 +15,6 @@ images:
   - "images/fad374da0134cdfc_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 6
-engagement_likes: 0
-engagement_comments: 0
-engagement_reposts: 0
 ---
 
 下班后你在干嘛，决定了你五年后是谁

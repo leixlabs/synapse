@@ -13,7 +13,6 @@ images:
   - "images/a563105bd152745a_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 197
 ---
 
 [视频] 从1块钱到自动化：独立开发者7个项目动态复盘与商业化思考 

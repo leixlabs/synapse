@@ -709,6 +709,10 @@ const DocHTML = `<!DOCTYPE html>
                             <div class="meta-box-value" id="meta-storage-root">Scanning...</div>
                         </div>
                         <div class="meta-box">
+                            <div class="meta-box-label">Metrics Root</div>
+                            <div class="meta-box-value" id="meta-metrics-root">Scanning...</div>
+                        </div>
+                        <div class="meta-box">
                             <div class="meta-box-label">Cache Entries</div>
                             <div class="meta-box-value" id="meta-cache-size">Scanning...</div>
                         </div>
@@ -1212,6 +1216,7 @@ const DocHTML = `<!DOCTYPE html>
                 if (res.ok) {
                     const healthData = await res.json();
                     document.getElementById('meta-storage-root').innerText = healthData.storage_root || 'N/A';
+                    document.getElementById('meta-metrics-root').innerText = healthData.metrics_root || 'disabled';
                     document.getElementById('meta-cache-size').innerText = healthData.cache_size !== undefined ? healthData.cache_size : 'N/A';
                 }
 

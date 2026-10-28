@@ -25,6 +25,19 @@ Content flows through the system as:
 - Website reads generated/static data and builds pages
 - Static site is deployed to hosting platform
 
+### Data Storage Split
+
+Content and operational data (views/likes/comments) live in **two separate roots**:
+
+| Data | Root | Layout |
+|------|------|--------|
+| Content Markdown + images | `social-media-data/` (`--storage-root`) | `<year>/<month>/<day>-<platform>-<title>.md` |
+| Engagement metrics | `/Users/lei/studio/social/metrics` (`--metrics-root`) | `<platform>/<year>/<month>/<day>-<title>.md` |
+
+Content files never carry `engagement_*` front matter; metrics files carry
+`views/likes/comments/reposts/reads/collects` plus a `content_path` back-reference.
+A metrics file is only written when the payload includes an `engagement` object.
+
 ## Chrome Extension Development
 
 ### Build and Test

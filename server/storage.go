@@ -58,17 +58,29 @@ type SaveResult struct {
 	ImagesDownloaded int
 }
 
+// MetricsResult is returned after a successful metrics save.
+type MetricsResult struct {
+	Path string // relative to the metrics root: platform/year/month/day-title.md
+}
+
+// parseContentTime parses the ISO-8601 timestamp of a collected item,
+// falling back to the current time when it is empty or malformed.
+func parseContentTime(value string) time.Time {
+	ts, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		// Try without timezone offset
+		ts, err = time.Parse("2006-01-02T15:04:05Z", value)
+		if err != nil {
+			return time.Now()
+		}
+	}
+	return ts
+}
+
 // SaveContent writes the content as a Markdown file with YAML front matter
 // and saves any base64 images to the images/ sub-directory.
 func SaveContent(cfg *Config, content CollectedContent, hashID string) (*SaveResult, error) {
-	ts, err := time.Parse(time.RFC3339, content.Timestamp)
-	if err != nil {
-		// Try without timezone offset
-		ts, err = time.Parse("2006-01-02T15:04:05Z", content.Timestamp)
-		if err != nil {
-			ts = time.Now()
-		}
-	}
+	ts := parseContentTime(content.Timestamp)
 
 	year := ts.Format("2006")
 	month := ts.Format("01")
@@ -199,6 +211,154 @@ func UpdateContent(cfg *Config, content CollectedContent, hashID string, relPath
 	}, nil
 }
 
+// metricsHasValues reports whether the payload carries at least one metric.
+func metricsHasValues(e *EngagementMetrics) bool {
+	if e == nil {
+		return false
+	}
+	return e.Views != nil || e.Likes != nil || e.Comments != nil ||
+		e.Reposts != nil || e.Reads != nil || e.Collects != nil
+}
+
+// SaveMetrics writes the engagement metrics of an item to a separate Markdown
+// file under the metrics root, following
+// <platform>/<year>/<month>/<day>-<title>.md.
+// The content file itself stays free of operational data.
+// It returns (nil, nil) when no metrics root is configured or the item carries
+// no metrics at all.
+func SaveMetrics(cfg *Config, content CollectedContent, hashID, contentRelPath string) (*MetricsResult, error) {
+	if cfg.MetricsRoot == "" || !metricsHasValues(content.Engagement) {
+		return nil, nil
+	}
+
+	ts := parseContentTime(content.Timestamp)
+	platform := slugify(strings.ToLower(content.Source), 24)
+	if platform == "" {
+		platform = "unknown"
+	}
+	year := ts.Format("2006")
+	month := ts.Format("01")
+	day := ts.Format("02")
+
+	dirPath := filepath.Join(cfg.MetricsRoot, platform, year, month)
+	if err := os.MkdirAll(dirPath, 0755); err != nil {
+		return nil, fmt.Errorf("create metrics directory: %w", err)
+	}
+
+	filename := buildMetricsFilename(content, hashID, dirPath, day)
+	absPath := filepath.Join(dirPath, filename)
+	md := buildMetricsMarkdown(hashID, content, contentRelPath, time.Now().Format(time.RFC3339))
+
+	if err := os.WriteFile(absPath, []byte(md), 0644); err != nil {
+		return nil, fmt.Errorf("write metrics file: %w", err)
+	}
+
+	return &MetricsResult{
+		Path: filepath.ToSlash(filepath.Join(platform, year, month, filename)),
+	}, nil
+}
+
+// buildMetricsFilename derives <day>-<title>.md for the metrics file, mirroring
+// the day prefix used by content files. An existing file for the same item is
+// reused (even after a title change), whereas a name collision with a different
+// item gets a short id suffix.
+func buildMetricsFilename(content CollectedContent, hashID string, dirPath, day string) string {
+	shortID := hashID[:16]
+
+	titleSource := strings.TrimSpace(content.Title)
+	maxTitleRunes := 64
+	if titleSource == "" {
+		titleSource = firstRunes(strings.TrimSpace(content.Text), 8)
+		maxTitleRunes = 8
+	}
+
+	title := slugify(titleSource, maxTitleRunes)
+	if title == "" {
+		title = shortID[:8]
+	}
+	if day = strings.TrimSpace(day); day == "" {
+		day = "00"
+	}
+
+	filename := fmt.Sprintf("%s-%s.md", day, title)
+	absPath := filepath.Join(dirPath, filename)
+
+	candidateExists := false
+	if _, err := os.Stat(absPath); err == nil {
+		if extractHashIDFromFile(absPath) == hashID {
+			return filename
+		}
+		candidateExists = true
+	}
+
+	// The item may already own a metrics file under its previous title
+	if existing := findMetricsFileByHash(dirPath, hashID); existing != "" {
+		return existing
+	}
+
+	if candidateExists {
+		return fmt.Sprintf("%s-%s-%s.md", day, title, shortID[:8])
+	}
+	return filename
+}
+
+// findMetricsFileByHash returns the file name in dirPath whose front matter
+// carries hashID, or "" when none matches.
+func findMetricsFileByHash(dirPath, hashID string) string {
+	entries, err := os.ReadDir(dirPath)
+	if err != nil {
+		return ""
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".md") {
+			continue
+		}
+		if extractHashIDFromFile(filepath.Join(dirPath, entry.Name())) == hashID {
+			return entry.Name()
+		}
+	}
+	return ""
+}
+
+// buildMetricsMarkdown assembles the front matter of a metrics file.
+func buildMetricsMarkdown(hashID string, c CollectedContent, contentRelPath, updatedAt string) string {
+	var sb strings.Builder
+
+	sb.WriteString("---\n")
+	wf := func(key, val string) {
+		if val != "" {
+			fmt.Fprintf(&sb, "%s: %q\n", key, val)
+		}
+	}
+	wf("id", hashID[:16])
+	wf("hash_id", hashID)
+	wf("source", c.Source)
+	wf("title", c.Title)
+	wf("url", c.URL)
+	wf("author_username", c.Author.Username)
+	wf("author_display_name", c.Author.DisplayName)
+	wf("original_date", c.Timestamp)
+	wf("collected_at", c.CollectedAt)
+	wf("content_path", filepath.ToSlash(contentRelPath))
+	wf("metrics_updated_at", updatedAt)
+
+	e := c.Engagement
+	wi := func(key string, val *int) {
+		if val != nil {
+			fmt.Fprintf(&sb, "%s: %d\n", key, *val)
+		}
+	}
+	wi("views", e.Views)
+	wi("likes", e.Likes)
+	wi("comments", e.Comments)
+	wi("reposts", e.Reposts)
+	wi("reads", e.Reads)
+	wi("collects", e.Collects)
+	sb.WriteString("---\n")
+
+	return sb.String()
+}
+
 // buildMarkdown assembles the YAML front matter and body of the Markdown file.
 func buildMarkdown(hashID string, c CollectedContent, localImages, remoteImages []string) string {
 	shortID := hashID[:16]
@@ -253,28 +413,7 @@ func buildMarkdown(hashID string, c CollectedContent, localImages, remoteImages 
 		}
 	}
 	sb.WriteString("status: \"collected\"\n")
-	sb.WriteString("server_version: \"1\"\n")
-	if c.Engagement != nil {
-		e := c.Engagement
-		if e.Reads != nil {
-			fmt.Fprintf(&sb, "engagement_reads: %d\n", *e.Reads)
-		}
-		if e.Likes != nil {
-			fmt.Fprintf(&sb, "engagement_likes: %d\n", *e.Likes)
-		}
-		if e.Comments != nil {
-			fmt.Fprintf(&sb, "engagement_comments: %d\n", *e.Comments)
-		}
-		if e.Reposts != nil {
-			fmt.Fprintf(&sb, "engagement_reposts: %d\n", *e.Reposts)
-		}
-		if e.Views != nil {
-			fmt.Fprintf(&sb, "engagement_views: %d\n", *e.Views)
-		}
-		if e.Collects != nil {
-			fmt.Fprintf(&sb, "engagement_collects: %d\n", *e.Collects)
-		}
-	}
+	sb.WriteString("server_version: \"2\"\n")
 	sb.WriteString("---\n\n")
 
 	// --- Body ---

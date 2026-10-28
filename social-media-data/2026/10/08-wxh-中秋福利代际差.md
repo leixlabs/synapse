@@ -13,10 +13,6 @@ images:
   - "images/63b80d8987f3fc87_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 3
-engagement_likes: 1
-engagement_comments: 0
-engagement_reposts: 0
 ---
 
 中秋福利代际差

@@ -13,10 +13,6 @@ images:
   - "images/7e9f1c17516d2a1c_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 3
-engagement_likes: 0
-engagement_comments: 0
-engagement_reposts: 0
 ---
 
 后现代程序员

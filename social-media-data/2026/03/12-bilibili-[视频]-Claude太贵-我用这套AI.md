@@ -13,7 +13,6 @@ images:
   - "images/adfdaebff97c1603_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 845
 ---
 
 [视频] Claude太贵？我用这套AI组合拳省下80%成本 

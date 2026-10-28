@@ -13,7 +13,6 @@ images:
   - "images/fbd8882a77bcb119_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 590
 ---
 
 [视频] B站创作者的窘境：做流量还是做自己？ 

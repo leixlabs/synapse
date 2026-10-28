@@ -13,7 +13,6 @@ images:
   - "images/27fa4f5784d9ef1a_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 148
 ---
 
 [视频] 凡人开发传：如何做一个个性化播客 

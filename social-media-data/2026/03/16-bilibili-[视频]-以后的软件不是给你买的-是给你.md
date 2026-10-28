@@ -13,7 +13,6 @@ images:
   - "images/826777fa30a9736f_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 450
 ---
 
 [视频] 以后的软件不是给你买的，是给你的 agent 买的 

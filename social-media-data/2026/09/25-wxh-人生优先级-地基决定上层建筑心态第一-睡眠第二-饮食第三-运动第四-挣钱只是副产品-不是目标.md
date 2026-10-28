@@ -13,10 +13,6 @@ images:
   - "images/87c8861dccb2ef87_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 101
-engagement_likes: 3
-engagement_comments: 0
-engagement_reposts: 13
 ---
 
 人生优先级-地基决定上层建筑

@@ -15,10 +15,6 @@ images:
   - "images/2317795f308f66ac_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 31
-engagement_likes: 0
-engagement_comments: 0
-engagement_reposts: 3
 ---
 
 先就业再择业

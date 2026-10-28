@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"time"
 )
@@ -24,6 +25,20 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// saveMetrics persists the operational data of an item next to the content.
+// Metrics never block the content write: failures are logged only.
+func (h *Handler) saveMetrics(content CollectedContent, hashID, contentRelPath string) string {
+	result, err := SaveMetrics(h.cfg, content, hashID, contentRelPath)
+	if err != nil {
+		log.Printf("[synapse] WARNING: metrics write failed for %s: %v", hashID[:16], err)
+		return ""
+	}
+	if result == nil {
+		return ""
+	}
+	return result.Path
+}
+
 // GET / — no auth required, serves API documentation
 func (h *Handler) Index(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -39,6 +54,7 @@ func (h *Handler) Health(w http.ResponseWriter, r *http.Request) {
 		"cache_size":     h.cache.Size(),
 		"uptime_seconds": int(time.Since(h.startAt).Seconds()),
 		"storage_root":   h.cfg.StorageRoot,
+		"metrics_root":   h.cfg.MetricsRoot,
 	})
 }
 
@@ -81,11 +97,13 @@ func (h *Handler) Collect(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.cache.Add(hashID, result.Path)
+	metricsPath := h.saveMetrics(content, hashID, result.Path)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":            "saved",
 		"id":                result.ID,
 		"path":              result.Path,
+		"metrics_path":      metricsPath,
 		"images_downloaded": result.ImagesDownloaded,
 	})
 }
@@ -97,10 +115,11 @@ type BatchRequest struct {
 
 // ItemResult is one entry in a batch response
 type ItemResult struct {
-	URL    string `json:"url"`
-	Status string `json:"status"`
-	ID     string `json:"id,omitempty"`
-	Error  string `json:"error,omitempty"`
+	URL         string `json:"url"`
+	Status      string `json:"status"`
+	ID          string `json:"id,omitempty"`
+	MetricsPath string `json:"metrics_path,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // POST /collect/batch — save multiple items
@@ -138,8 +157,9 @@ func (h *Handler) CollectBatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		h.cache.Add(hashID, result.Path)
+		metricsPath := h.saveMetrics(content, hashID, result.Path)
 		saved++
-		results = append(results, ItemResult{URL: content.URL, Status: "saved", ID: result.ID})
+		results = append(results, ItemResult{URL: content.URL, Status: "saved", ID: result.ID, MetricsPath: metricsPath})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -226,6 +246,7 @@ func (h *Handler) Upsert(w http.ResponseWriter, r *http.Request) {
 			"status":            "updated",
 			"id":                result.ID,
 			"path":              result.Path,
+			"metrics_path":      h.saveMetrics(content, hashID, result.Path),
 			"images_downloaded": result.ImagesDownloaded,
 		})
 		return
@@ -238,21 +259,24 @@ func (h *Handler) Upsert(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.cache.Add(hashID, result.Path)
+	metricsPath := h.saveMetrics(content, hashID, result.Path)
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"status":            "saved",
 		"id":                result.ID,
 		"path":              result.Path,
+		"metrics_path":      metricsPath,
 		"images_downloaded": result.ImagesDownloaded,
 	})
 }
 
 // UpsertItemResult is one entry in an upsert batch response
 type UpsertItemResult struct {
-	URL    string `json:"url"`
-	Status string `json:"status"` // "saved", "updated", "error"
-	ID     string `json:"id,omitempty"`
-	Error  string `json:"error,omitempty"`
+	URL         string `json:"url"`
+	Status      string `json:"status"` // "saved", "updated", "error"
+	ID          string `json:"id,omitempty"`
+	MetricsPath string `json:"metrics_path,omitempty"`
+	Error       string `json:"error,omitempty"`
 }
 
 // POST /upsert/batch — create or overwrite multiple items
@@ -285,7 +309,7 @@ func (h *Handler) UpsertBatch(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			updated++
-			results = append(results, UpsertItemResult{URL: content.URL, Status: "updated", ID: result.ID})
+			results = append(results, UpsertItemResult{URL: content.URL, Status: "updated", ID: result.ID, MetricsPath: h.saveMetrics(content, hashID, result.Path)})
 			continue
 		}
 
@@ -297,8 +321,9 @@ func (h *Handler) UpsertBatch(w http.ResponseWriter, r *http.Request) {
 		}
 
 		h.cache.Add(hashID, result.Path)
+		metricsPath := h.saveMetrics(content, hashID, result.Path)
 		saved++
-		results = append(results, UpsertItemResult{URL: content.URL, Status: "saved", ID: result.ID})
+		results = append(results, UpsertItemResult{URL: content.URL, Status: "saved", ID: result.ID, MetricsPath: metricsPath})
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

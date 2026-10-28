@@ -6,17 +6,13 @@ type: "image"
 title: "人生优先级-地基决定上层建筑\n\n我以前也把搞钱排第一，事业第二，健康往后放。直到身边几个人让我改了看法。\n\n有的事业刚起色就查出..."
 url: "https://mp.weixin.qq.com/s/P-0EfC_TkSnRttMmB8MOog"
 original_date: "2026-10-08T08:03:38.000Z"
-collected_at: "2026-10-09T11:40:31.019Z"
+collected_at: "2026-10-28T08:46:36.737Z"
 author_username: "kamaleizhang"
 author_display_name: "散人张磊"
 images:
   - "images/ded3769bbd27f3cf_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 49
-engagement_likes: 0
-engagement_comments: 1
-engagement_reposts: 1
 ---
 
 人生优先级-地基决定上层建筑

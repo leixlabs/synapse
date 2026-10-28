@@ -6,14 +6,13 @@ type: "video"
 title: "[视频] 我曾最狂热的AI工具，现在基本不用了——OpenClaw 真实使用报告 \n从狂热到放弃，我来聊聊 OpenClaw 的..."
 url: "https://www.bilibili.com/video/BV1ugNFz5EYH/"
 original_date: "2026-03-16T16:00:00.000Z"
-collected_at: "2026-07-18T01:00:25.491Z"
+collected_at: "2026-10-27T17:22:31.676Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/66e05c6c307997b7_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 2074
 ---
 
 [视频] 我曾最狂热的AI工具，现在基本不用了——OpenClaw 真实使用报告 

@@ -6,14 +6,13 @@ type: "video"
 title: "[视频] 打工人的英语自救指南我的工具链全公开 \n【一句话价值总结】 上班其实是一种消耗，真正消耗你的从来不是工作本身——而是和..."
 url: "https://www.bilibili.com/video/BV1c2Vq6CECt/"
 original_date: "2026-06-01T16:00:00.000Z"
-collected_at: "2026-07-18T01:00:25.490Z"
+collected_at: "2026-10-27T17:22:31.675Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/7fdbd2a600a8c1e0_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 105
 ---
 
 [视频] 打工人的英语自救指南我的工具链全公开 

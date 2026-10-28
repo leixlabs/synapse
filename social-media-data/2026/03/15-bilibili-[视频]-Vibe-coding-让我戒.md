@@ -13,7 +13,6 @@ images:
   - "images/35374dd093daf2a4_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 8677
 ---
 
 [视频] Vibe coding 让我戒掉了游戏，但它本身比游戏还上瘾 

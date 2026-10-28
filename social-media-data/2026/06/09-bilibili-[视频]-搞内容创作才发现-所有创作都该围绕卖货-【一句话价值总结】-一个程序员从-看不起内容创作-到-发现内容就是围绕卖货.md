@@ -6,14 +6,13 @@ type: "video"
 title: "[视频] 搞内容创作才发现：所有创作都该围绕卖货 \n【一句话价值总结】 一个程序员从\"看不起内容创作\"到\"发现内容就是围绕卖货\"..."
 url: "https://www.bilibili.com/video/BV1gnE36PE4k/"
 original_date: "2026-06-08T16:00:00.000Z"
-collected_at: "2026-07-18T01:00:25.490Z"
+collected_at: "2026-10-27T17:22:31.675Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/992ce37633f0af12_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 421
 ---
 
 [视频] 搞内容创作才发现：所有创作都该围绕卖货 

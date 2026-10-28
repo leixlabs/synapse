@@ -6,14 +6,13 @@ type: "video"
 title: "[视频] 公众号没赚到钱 短视频字幕还没搞好 但我不打算停 \n【一句话价值总结】 情绪低落时对一切的判断都会偏低，但越是这种时候..."
 url: "https://www.bilibili.com/video/BV1jij36KEgo/"
 original_date: "2026-06-15T16:00:00.000Z"
-collected_at: "2026-07-18T01:00:25.489Z"
+collected_at: "2026-10-27T17:22:31.675Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/bdee61e7a26c606c_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_views: 116
 ---
 
 [视频] 公众号没赚到钱 短视频字幕还没搞好 但我不打算停 

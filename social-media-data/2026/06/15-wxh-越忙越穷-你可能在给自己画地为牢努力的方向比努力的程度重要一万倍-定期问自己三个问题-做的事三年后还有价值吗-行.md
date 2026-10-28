@@ -15,10 +15,6 @@ images:
   - "images/b0a01c6e2c745bec_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 7
-engagement_likes: 1
-engagement_comments: 0
-engagement_reposts: 0
 ---
 
 越忙越穷？你可能在给自己画地为牢

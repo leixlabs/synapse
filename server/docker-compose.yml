@@ -6,17 +6,22 @@ services:
     ports:
       - "7070:7070"
     volumes:
-      # Persist Markdown files and images
+      # Persist Markdown files and images (content only)
       - /Users/lei/dev/projects/2601-synapse/social-media-data:/data
+      # Persist engagement metrics separately (platform/year/month/day-title.md)
+      - /Users/lei/studio/social/metrics:/metrics
     environment:
       # Set your secret token here or use a .env file
       - STORAGE_ROOT=/data
+      - METRICS_ROOT=/metrics
       - PORT=7070
       - HOST=0.0.0.0
       - LOG_LEVEL=info
     command:
       - --storage-root
       - /data
+      - --metrics-root
+      - /metrics
       - --port
       - "7070"
       - --host

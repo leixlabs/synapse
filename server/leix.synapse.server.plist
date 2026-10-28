@@ -4,6 +4,10 @@
 <!--
   Synapse Local Server — launchd Service
 
+  Two separate data roots:
+    --storage-root  content Markdown + images   (year/month/<day>-<platform>-<title>.md)
+    --metrics-root  engagement metrics          (<platform>/<year>/<month>/<title>.md)
+
   SETUP:
     1. Build the binary:
          cd /Users/lei/dev/projects/2601-synapse/server
@@ -29,6 +33,8 @@
         <string>/Users/lei/.local/bin/synapse-server</string>
         <string>--storage-root</string>
         <string>/Users/lei/dev/projects/2601-synapse/social-media-data</string>
+        <string>--metrics-root</string>
+        <string>/Users/lei/studio/social/metrics</string>
         <string>--port</string>
         <string>7070</string>
         <string>--host</string>

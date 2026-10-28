@@ -15,10 +15,6 @@ images:
   - "images/caa4ac962f59a98f_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 5
-engagement_likes: 0
-engagement_comments: 0
-engagement_reposts: 0
 ---
 
 别人突然对你好？小心！这可能是坑你的开始

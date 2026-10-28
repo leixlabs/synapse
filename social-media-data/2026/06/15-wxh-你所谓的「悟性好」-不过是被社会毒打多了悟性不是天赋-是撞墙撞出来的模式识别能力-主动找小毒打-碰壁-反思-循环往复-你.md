@@ -15,10 +15,6 @@ images:
   - "images/252fa8073dd3d7e8_0.jpg"
 status: "collected"
 server_version: "1"
-engagement_reads: 43
-engagement_likes: 0
-engagement_comments: 0
-engagement_reposts: 8
 ---
 
 你所谓的「悟性好」，不过是被社会毒打多了
