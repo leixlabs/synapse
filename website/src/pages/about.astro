@@ -1,7 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-
-const GITHUB_URL = "https://github.com/0xkamalei/synapse";
+import ArchitectureMap from "../components/ArchitectureMap.astro";
+import { GITHUB_URL } from "../lib/site";
 
 const steps = [
   {
@@ -19,11 +19,15 @@ const steps = [
 ];
 
 const sources = [
-  { name: "X", note: "posts & replies" },
-  { name: "Bilibili", note: "dynamics & video" },
-  { name: "QZone", note: "feeds & albums" },
-  { name: "Weibo", note: "planned" },
-  { name: "RedBook", note: "planned" },
+  { name: "X", note: "posts & replies", dot: "--src-x" },
+  { name: "Bilibili", note: "dynamics & video", dot: "--src-bilibili" },
+  { name: "WeChat", note: "公众号 articles", dot: "--src-wechat" },
+  { name: "知识星球", note: "posts & comments", dot: "--src-zsxq" },
+  { name: "Weibo", note: "posts & threads", dot: "--src-weibo" },
+  { name: "RedBook", note: "notes & galleries", dot: "--src-redbook" },
+  { name: "Douyin", note: "works & stats", dot: "--src-douyin" },
+  { name: "QZone", note: "feeds & albums", dot: "--src-qzone" },
+  { name: "YouTube", note: "videos", dot: "--src-youtube" },
 ];
 
 const guarantees = [
@@ -148,10 +152,33 @@ const guarantees = [
       </div>
     </section>
 
+    <section class="chapter" id="architecture">
+      <div class="inner">
+        <div class="chapter-grid">
+          <div class="chapter-label">
+            <span class="num">03</span>
+            <span class="name">Architecture</span>
+          </div>
+          <div class="chapter-body">
+            <h2>The whole system, in five bands.</h2>
+            <p>
+              Four moving parts and one folder. A browser extension reads the
+              page you are already on, a local daemon writes it to disk, a build
+              step flattens those files into JSON, and a static site renders
+              them. Nothing is held in a database, and nothing on this site needs
+              a server to stay awake.
+            </p>
+          </div>
+        </div>
+
+        <ArchitectureMap />
+      </div>
+    </section>
+
     <section class="chapter">
       <div class="inner chapter-grid">
         <div class="chapter-label">
-          <span class="num">03</span>
+          <span class="num">04</span>
           <span class="name">What you get</span>
         </div>
         <div class="chapter-body">
@@ -173,7 +200,7 @@ const guarantees = [
     <section class="chapter">
       <div class="inner chapter-grid">
         <div class="chapter-label">
-          <span class="num">04</span>
+          <span class="num">05</span>
           <span class="name">Sources</span>
         </div>
         <div class="chapter-body">
@@ -181,8 +208,15 @@ const guarantees = [
           <ul class="source-list">
             {
               sources.map((source) => (
-                <li class={source.note === "planned" ? "is-planned" : ""}>
-                  <span class="source-name">{source.name}</span>
+                <li>
+                  <span class="source-name">
+                    <span
+                      class="source-dot"
+                      style={`--dot: var(${source.dot})`}
+                      aria-hidden="true"
+                    />
+                    {source.name}
+                  </span>
                   <span class="source-note">{source.note}</span>
                 </li>
               ))
@@ -190,7 +224,9 @@ const guarantees = [
           </ul>
           <p class="source-foot">
             Adding a source is a single collector file — the popup discovers it
-            automatically.
+            automatically. Entries imported from WeChat before the collector
+            existed carry the legacy label <em>公众号</em>; both resolve to the
+            same platform.
           </p>
         </div>
       </div>
@@ -440,9 +476,20 @@ const guarantees = [
   }
 
   .source-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
     font-family: var(--font-serif);
     font-size: 1.0625rem;
     color: var(--ink);
+  }
+
+  .source-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--dot, var(--ink-faint));
+    flex: none;
   }
 
   .source-note {
@@ -453,14 +500,17 @@ const guarantees = [
     color: var(--ink-faint);
   }
 
-  .source-list li.is-planned .source-name {
-    color: var(--ink-faint);
-  }
-
   .source-foot {
     margin-top: var(--space-4);
     font-size: 0.8125rem;
+    line-height: 1.6;
     color: var(--ink-faint);
+    max-width: 62ch;
+  }
+
+  .source-foot em {
+    font-style: italic;
+    color: var(--ink-muted);
   }
 
   /* Closing --------------------------------------------------------------- */

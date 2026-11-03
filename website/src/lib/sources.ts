@@ -17,6 +17,7 @@ export const SOURCE_META: Record<string, SourceMeta> = {
   qzone: { key: "qzone", label: "QZone", color: "var(--src-qzone)" },
   weibo: { key: "weibo", label: "Weibo", color: "var(--src-weibo)" },
   redbook: { key: "redbook", label: "RedBook", color: "var(--src-redbook)" },
+  douyin: { key: "douyin", label: "Douyin", color: "var(--src-douyin)" },
   wxh: { key: "wechat", label: "WeChat", color: "var(--src-wechat)" },
   "公众号": { key: "wechat", label: "公众号", color: "var(--src-wechat)" },
   youtube: { key: "youtube", label: "YouTube", color: "var(--src-youtube)" },

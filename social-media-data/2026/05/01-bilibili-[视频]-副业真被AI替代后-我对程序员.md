@@ -6,13 +6,13 @@ type: "video"
 title: "[视频] 副业真被AI替代后 我对程序员工作的真实判断 \n【一句话价值总结】 这期视频不是空谈 AI 会不会替代程序员，而是从我..."
 url: "https://www.bilibili.com/video/BV1b6RTB6EYU/"
 original_date: "2026-04-30T16:00:00.000Z"
-collected_at: "2026-10-27T17:22:31.675Z"
+collected_at: "2026-11-03T08:54:54.612Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/767901b9e49bbea7_0.jpg"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 [视频] 副业真被AI替代后 我对程序员工作的真实判断 

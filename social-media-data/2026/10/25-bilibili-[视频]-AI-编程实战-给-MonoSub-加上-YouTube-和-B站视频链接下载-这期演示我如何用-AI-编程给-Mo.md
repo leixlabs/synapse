@@ -5,14 +5,14 @@ source: "Bilibili"
 type: "video"
 title: "[视频] AI 编程实战：给 MonoSub 加上 YouTube 和 B站视频链接下载 \n这期演示我如何用 AI 编程给 Mo..."
 url: "https://www.bilibili.com/video/BV1wMHw6wES7/"
-original_date: "2026-10-25T17:22:00.000Z"
-collected_at: "2026-10-27T17:22:31.675Z"
+original_date: "2026-10-25T16:00:00.000Z"
+collected_at: "2026-11-03T08:54:54.611Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/794d541ff1ae6334_0.jpg"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 [视频] AI 编程实战：给 MonoSub 加上 YouTube 和 B站视频链接下载 

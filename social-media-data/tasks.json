@@ -12,20 +12,8 @@
     "time": "09:00"
   },
   {
-    "id": "sched_bilibili_284623903",
-    "url": "https://space.bilibili.com/284623903/dynamic",
-    "enabled": false,
-    "time": "09:00"
-  },
-  {
     "id": "sched_qzone_852872578",
     "url": "https://user.qzone.qq.com/852872578",
-    "enabled": false,
-    "time": "09:00"
-  },
-  {
-    "id": "sched_redbook_64f335df00000000050011ee",
-    "url": "https://www.xiaohongshu.com/user/profile/64f335df00000000050011ee",
     "enabled": false,
     "time": "09:00"
   }

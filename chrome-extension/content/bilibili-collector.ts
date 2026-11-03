@@ -1,651 +1,348 @@
 /**
  * Bilibili Content Collector
- * Extracts dynamic content from Bilibili pages
+ *
+ * Collects the logged-in UP's works from the creator center "稿件管理" page:
+ *   https://member.bilibili.com/platform/upload-manager/article
+ *
+ * The public space feed exposes no operational data, whereas the creator list
+ * renders every work together with its 运营数据, so each card is collected with
+ * its engagement metrics attached:
+ *   播放 / 点赞 / 弹幕 / 评论 / 硬币 / 收藏 / 分享
+ *
+ * Each card links to the public work URL (video/BVxxx or read/cvxxx) from its
+ * cover anchor; that URL is the dedupe key on the server side.
  */
 (() => {
+  const CREATOR_HOST = 'member.bilibili.com';
+  const UPLOAD_MANAGER_PATH = '/platform/upload-manager';
+
   /**
-   * Detect the type of dynamic
-   * @param {Element} dynamicElement
-   * @returns {'text' | 'video' | 'article' | 'unknown'}
+   * Stat slots of a card. The page labels every slot through its `title`
+   * attribute, so the mapping survives a reordering of the slots.
+   * Bilibili calls the tipping metric 硬币 in the creator list.
    */
-  function detectDynamicTypeBilibili(
-    dynamicElement: Element,
-  ): 'text' | 'video' | 'article' | 'unknown' {
-    // Check for video dynamic (投稿了视频)
-    if (dynamicElement.querySelector('.bili-dyn-card-video')) return 'video';
+  const STAT_TITLES: Record<string, keyof EngagementMetrics> = {
+    播放: 'views',
+    点赞: 'likes',
+    弹幕: 'danmaku',
+    评论: 'comments',
+    硬币: 'coins',
+    收藏: 'collects',
+    分享: 'reposts',
+  };
 
-    // Check for article dynamic (专栏)
-    if (dynamicElement.querySelector('.bili-dyn-card-article')) return 'article';
+  // ---------------------------------------------------------------------------
+  // Generic helpers
+  // ---------------------------------------------------------------------------
 
-    // Check for pure text/image dynamic (Opus or standard)
-    if (
-      dynamicElement.querySelector(
-        '.dyn-card-opus, .bili-dyn-content__orig__desc, .bili-rich-text, .opus-module-content',
-      )
-    )
-      return 'text';
+  function sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
 
-    // Fallback: If it has any text or images, it's likely a text dynamic
-    const text = (dynamicElement as HTMLElement).innerText?.trim();
-    if (text || dynamicElement.querySelector('img')) return 'text';
-
-    return 'unknown';
+  function textOf(element: Element | null): string {
+    if (!element) return '';
+    return (element as HTMLElement).innerText?.trim() || element.textContent?.trim() || '';
   }
 
   /**
-   * Extract embedded links from Bilibili dynamic text
-   * Bilibili encodes links as href attributes in text content
+   * Parse a stat label such as `1234`, `1,234`, `1.2万`, `3.5w` into a number.
+   * Returns undefined for the `-` placeholder and unparsable values.
    */
-  function extractBilibiliEmbeddedLinks(dynamicElement: Element): string[] {
-    const links: string[] = [];
+  function parseStatValue(raw: string): number | undefined {
+    const text = (raw || '').replace(/,/g, '').trim();
+    if (!text || text === '-' || text === '—' || text === '--') return undefined;
 
-    // Find all links in the content (opus summary or other text areas)
-    const contentSelectors = [
-      '.dyn-card-opus__summary',
-      '.opus-module-content',
-      '.bili-dyn-content__orig__desc',
-      '.bili-rich-text',
-    ];
+    const match = text.match(/^([\d.]+)\s*(万|亿|[wWkK])?/);
+    if (!match) return undefined;
 
-    for (const selector of contentSelectors) {
-      const contentElement = dynamicElement.querySelector(selector);
-      if (!contentElement) continue;
+    const base = Number.parseFloat(match[1]);
+    if (!Number.isFinite(base)) return undefined;
 
-      // Find all <a> tags with href containing "网页链接" text
-      const anchors = contentElement.querySelectorAll('a[href]');
-      anchors.forEach((anchor) => {
-        const href = anchor.getAttribute('href') || '';
-        const text = (anchor as HTMLElement).innerText?.trim() || '';
+    const unit = (match[2] || '').toLowerCase();
+    const factor =
+      unit === '万' || unit === 'w' ? 10000 : unit === '亿' ? 100000000 : unit === 'k' ? 1000 : 1;
 
-        // Check if this link has "网页链接" as its visible text
-        if (href && text.includes('网页链接')) {
-          // Remove query parameters for cleaner URLs
-          const cleanUrl = href.split('?')[0];
-          if (!links.includes(cleanUrl) && cleanUrl.startsWith('http')) {
-            links.push(cleanUrl);
-          }
-        }
-      });
-
-      if (links.length > 0) break;
-    }
-
-    return links;
+    return Math.round(base * factor);
   }
 
   /**
-   * Extract text content from a dynamic element
-   * Handles both text dynamics and video dynamics
-   * Replaces "网页链接" placeholders with actual extracted URLs
-   * @param {Element} dynamicElement
-   * @returns {string}
+   * Normalize a protocol-relative CDN URL to https and drop the transform
+   * suffix (`@308w_174h`), keeping the original asset.
    */
-  function extractDynamicTextBilibili(dynamicElement: Element): string {
-    const dynamicType = detectDynamicTypeBilibili(dynamicElement);
+  function normalizeCoverUrl(raw: string): string {
+    const value = (raw || '').trim();
+    if (!value) return '';
 
-    // For VIDEO dynamics: combine title + description
-    if (dynamicType === 'video') {
-      const titleElement = dynamicElement.querySelector('.bili-dyn-card-video__title');
-      const descElement = dynamicElement.querySelector('.bili-dyn-card-video__desc');
+    const withScheme = value.startsWith('//')
+      ? `https:${value}`
+      : value.replace(/^http:\/\//, 'https://');
 
-      const title = (titleElement as HTMLElement)?.innerText?.trim() || '';
-      const desc = (descElement as HTMLElement)?.innerText?.trim() || '';
+    return withScheme.split('@')[0].split('?')[0];
+  }
 
-      // Combine: [视频] Title\nDescription
-      if (title && desc && desc !== '-') {
-        return `[视频] ${title} \n${desc} `;
-      } else if (title) {
-        return `[视频] ${title} `;
-      }
-    }
+  /**
+   * Normalize a card link to the canonical public work URL. The list renders
+   * protocol-relative hrefs and may append tracking params.
+   */
+  function normalizeWorkUrl(raw: string): string {
+    const value = (raw || '').trim();
+    if (!value) return '';
 
-    // For TEXT dynamics: try opus summary first (contains actual text in spans)
-    const opusSummary = dynamicElement.querySelector(
-      '.dyn-card-opus__summary, .opus-module-content',
+    let url = value.startsWith('//') ? `https:${value}` : value;
+    if (!/^https?:\/\//.test(url)) return '';
+    url = url.replace(/^http:\/\//, 'https://');
+    return url.split('#')[0].split('?')[0];
+  }
+
+  /**
+   * Format the wall-clock publish time shown on the card
+   * ("2026年10月31日 20:30:00") as ISO 8601 in Beijing time.
+   */
+  function formatPublishTime(raw: string): string {
+    const match = (raw || '').match(
+      /(\d{4})\s*[年/.-]\s*(\d{1,2})\s*[月/.-]\s*(\d{1,2})\s*日?(?:\s*(\d{1,2}):(\d{2})(?::(\d{2}))?)?/,
     );
-    if (opusSummary) {
-      // Get all text content from nested elements
-      let text = (opusSummary as HTMLElement).innerText.trim() || '';
+    if (!match) return '';
 
-      // Extract embedded links and replace "网页链接" with actual URLs
-      const embeddedLinks = extractBilibiliEmbeddedLinks(dynamicElement);
-      if (embeddedLinks.length > 0) {
-        // Replace each "网页链接" occurrence with the corresponding real link
-        embeddedLinks.forEach((link) => {
-          text = text.replace('网页链接', link);
-        });
-      }
+    const pad = (value: string | undefined) => (value || '0').padStart(2, '0');
+    const [, year, month, day, hour, minute, second] = match;
+    return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}+08:00`;
+  }
 
-      return text;
+  // ---------------------------------------------------------------------------
+  // Account identity
+  // ---------------------------------------------------------------------------
+
+  /**
+   * The creator header renders only the avatar (no nickname, no UID), so the
+   * session cookie's DedeUserID is the only reliable account identifier.
+   */
+  function getAccountUid(): string {
+    const cookieMatch = document.cookie.match(/(?:^|;\s*)DedeUserID=(\d+)/);
+    if (cookieMatch) return cookieMatch[1];
+
+    const links = Array.from(
+      document.querySelectorAll(
+        'a.avatar, .header-popover-avatar a, a[href*="space.bilibili.com"]',
+      ),
+    );
+    for (const link of links) {
+      const match = (link.getAttribute('href') || '').match(/space\.bilibili\.com\/(\d+)/);
+      if (match) return match[1];
     }
-
-    // Fallback selectors
-    const textSelectors = [
-      '.bili-dyn-content__orig__desc',
-      '.bili-rich-text',
-      '.dyn-card-opus__summary',
-    ];
-
-    for (const selector of textSelectors) {
-      const textElement = dynamicElement.querySelector(selector);
-      if (textElement) {
-        let text = (textElement as HTMLElement).innerText.trim() || '';
-
-        // Extract embedded links and replace "网页链接" with actual URLs
-        const embeddedLinks = extractBilibiliEmbeddedLinks(dynamicElement);
-        if (embeddedLinks.length > 0) {
-          embeddedLinks.forEach((link) => {
-            text = text.replace('网页链接', link);
-          });
-        }
-
-        return text;
-      }
-    }
-
     return '';
   }
 
   /**
-   * Extract images from a dynamic element
-   * Handles both image dynamics and video thumbnails
-   * @param {Element} dynamicElement
-   * @returns {string[]}
+   * Last-resort identifier: the avatar's face hash is stable per account.
    */
-  function extractDynamicImagesBilibili(dynamicElement: Element): string[] {
-    const images: string[] = [];
-    const dynamicType = detectDynamicTypeBilibili(dynamicElement);
-
-    // For VIDEO dynamics: extract video cover/thumbnail
-    if (dynamicType === 'video') {
-      const coverSelectors = [
-        '.bili-dyn-card-video__cover img',
-        '.bili-dyn-card-video .cover img',
-        '.bili-dyn-card-video__cover-img',
-      ];
-
-      for (const selector of coverSelectors) {
-        const coverImg = dynamicElement.querySelector(selector) as HTMLImageElement;
-        if (coverImg) {
-          let src = coverImg.src || coverImg.getAttribute('data-src');
-          if (src) {
-            src = src.replace(/@\d+w_\d+h.*/, '');
-            images.push(src);
-            break;
-          }
-        }
-      }
-    }
-
-    // For IMAGE dynamics: find images in dynamic content
-    const imageSelectors = [
-      '.bili-dyn-content__orig__pics img',
-      '.bili-album__preview__picture img',
-      '.dyn-card-opus__pics img',
-      '.opus-module-content img',
-    ];
-
-    for (const selector of imageSelectors) {
-      const imgElements = dynamicElement.querySelectorAll(selector);
-      imgElements.forEach((img) => {
-        const htmlImg = img as HTMLImageElement;
-        let src = htmlImg.src || htmlImg.getAttribute('data-src');
-        if (src) {
-          // Get higher quality version
-          src = src.replace(/@\d+w_\d+h.*/, '');
-          images.push(src);
-        }
-      });
-    }
-
-    return [...new Set(images)]; // Remove duplicates
-  }
-
-  /**
-   * Extract timestamp from a dynamic element
-   * @param {Element} dynamicElement
-   * @returns {string}
-   */
-  function extractDynamicTimestampBilibili(dynamicElement: Element): string {
-    // Try to find time element
-    const timeSelectors = [
-      '.bili-dyn-time',
-      '.dyn-card-opus__head__time',
-      '.bili-dyn-item__header__info__time',
-      'time',
-      '.time',
-    ];
-
-    for (const selector of timeSelectors) {
-      const timeElement = dynamicElement.querySelector(selector);
-      if (timeElement) {
-        // Priority 1: Check title attribute (often has full date/time)
-        const titleTime = timeElement.getAttribute('title');
-        if (titleTime && titleTime.match(/\d{4}-\d{1,2}-\d{1,2}/)) {
-          // Handle formats like "2024-12-30 14:00" or "2024/12/30 14:00"
-          const date = new Date(titleTime.replace(/-/g, '/'));
-          if (!isNaN(date.getTime())) return date.toISOString();
-        }
-
-        // Priority 2: Check datetime attribute (semantic standard)
-        const dateTimeAttr = timeElement.getAttribute('datetime');
-        if (dateTimeAttr) {
-          const date = new Date(dateTimeAttr);
-          if (!isNaN(date.getTime())) return date.toISOString();
-        }
-
-        // Priority 3: Parse the visible text
-        const timeText =
-          (timeElement as HTMLElement).innerText || timeElement.getAttribute('datetime');
-        if (timeText) {
-          return parseRelativeTimeBilibili(timeText);
-        }
-      }
-    }
-
-    const now = new Date();
-    now.setSeconds(0, 0);
-    return now.toISOString();
-  }
-
-  /**
-   * Parse relative time string to ISO format
-   * @param {string} timeText
-   * @returns {string}
-   */
-  function parseRelativeTimeBilibili(timeText: string): string {
-    const now = new Date();
-    // Normalize to minute to ensure stable URLs for deduplication
-    now.setSeconds(0, 0);
-
-    // Handle "Just now" (刚刚)
-    if (timeText.includes('刚刚') || timeText.toLowerCase().includes('just now')) {
-      return now.toISOString();
-    }
-
-    // Handle "X minutes ago", "X hours ago", "X days ago"
-    const minuteMatch = timeText.match(/(\d+)\s*(?:分钟前|minutes ago)/);
-    if (minuteMatch) {
-      now.setMinutes(now.getMinutes() - parseInt(minuteMatch[1]));
-      return now.toISOString();
-    }
-
-    const hourMatch = timeText.match(/(\d+)\s*(?:小时前|hours ago)/);
-    if (hourMatch) {
-      now.setHours(now.getHours() - parseInt(hourMatch[1]));
-      return now.toISOString();
-    }
-
-    const dayMatch = timeText.match(/(\d+)\s*(?:天前|days ago)/);
-    if (dayMatch) {
-      now.setDate(now.getDate() - parseInt(dayMatch[1]));
-      return now.toISOString();
-    }
-
-    // Handle "Yesterday" (昨天)
-    if (timeText.includes('昨天') || timeText.toLowerCase().includes('yesterday')) {
-      const timePart = timeText.match(/\d{1,2}:\d{2}/);
-      now.setDate(now.getDate() - 1);
-      if (timePart) {
-        const [h, m] = timePart[0].split(':');
-        now.setHours(parseInt(h), parseInt(m), 0, 0);
-      }
-      return now.toISOString();
-    }
-
-    // Handle "Day before yesterday" (前天)
-    if (timeText.includes('前天') || timeText.toLowerCase().includes('day before yesterday')) {
-      const timePart = timeText.match(/\d{1,2}:\d{2}/);
-      now.setDate(now.getDate() - 2);
-      if (timePart) {
-        const [h, m] = timePart[0].split(':');
-        now.setHours(parseInt(h), parseInt(m), 0, 0);
-      }
-      return now.toISOString();
-    }
-
-    // Handle date format like "2025年12月17日" or "12月17日"
-    const cnDateMatch = timeText.match(
-      /(?:(\d{4})(?:年|[-/]))?\s*(\d{1,2})(?:月|[-/])\s*(\d{1,2})日?/,
-    );
-    if (cnDateMatch) {
-      const year = parseInt(cnDateMatch[1]) || now.getFullYear();
-      const month = parseInt(cnDateMatch[2]) - 1;
-      const day = parseInt(cnDateMatch[3]);
-
-      // Create Date as UTC+8 (Beijing Time)
-      const date = new Date(Date.UTC(year, month, day, 0, 0));
-      date.setUTCHours(date.getUTCHours() - 8);
-      return date.toISOString();
-    }
-
-    // Handle date format like "01-05" or "2026-01-05"
-    const dateMatch = timeText.match(/(?:(\d{2,4})-)?(\d{1,2})-(\d{1,2})/);
-    if (dateMatch) {
-      let yearStr = dateMatch[1] || now.getFullYear().toString();
-      if (yearStr.length === 2) {
-        yearStr = '20' + yearStr;
-      }
-      const year = parseInt(yearStr);
-      const month = parseInt(dateMatch[2]) - 1;
-      const day = parseInt(dateMatch[3]);
-
-      // Create Date as UTC+8 (Beijing Time)
-      const date = new Date(Date.UTC(year, month, day, 0, 0));
-      date.setUTCHours(date.getUTCHours() - 8);
-      return date.toISOString();
-    }
-
-    return now.toISOString();
-  }
-
-  /**
-   * Extract dynamic URL
-   * Handles both dynamic/opus URLs and video URLs
-   * @param {Element} dynamicElement
-   * @returns {string}
-   */
-  function extractDynamicUrlBilibili(dynamicElement: Element): string {
-    // 1. Try to find a direct video/opus link first
-    const linkElement = dynamicElement.querySelector(
-      'a[href*="/video/"], a[href*="/opus/"]',
-    ) as HTMLAnchorElement;
-    if (linkElement && linkElement.href && !linkElement.href.includes('space.bilibili.com')) {
-      return linkElement.href.split('?')[0];
-    }
-
-    // 2. Try to find dynamic ID from attributes
-    const dynamicId =
-      dynamicElement.getAttribute('data-id') ||
-      dynamicElement.getAttribute('data-dynamic-id') ||
-      dynamicElement.querySelector('[data-id]')?.getAttribute('data-id');
-
-    if (dynamicId) {
-      return `https://www.bilibili.com/opus/${dynamicId}`;
-    }
-
-    // 3. For text dynamics without ID, use Space URL + Text Highlight (#:~:text=...)
-    const pageUID = getCurrentPageUID() || 'unknown';
-    const text = extractDynamicTextBilibili(dynamicElement);
-    const timestamp = extractDynamicTimestampBilibili(dynamicElement);
-
-    // Use first 100 chars of text for highlight to keep URL reasonable
-    const highlightText = text.substring(0, 100).trim();
-    if (highlightText) {
-      const encodedText = encodeURIComponent(highlightText);
-      // Add timestamp-based salt to ensure uniqueness for same-text posts
-      const salt = btoa(timestamp).substring(0, 8);
-      return `https://space.bilibili.com/${pageUID}/dynamic#:~:text=${encodedText}&synapse=${salt}`;
-    }
-
-    return `https://space.bilibili.com/${pageUID}/dynamic#synapse-${Date.now()}`;
-  }
-
-  /**
-   * Extract author info from a dynamic element
-   * @param {Element} dynamicElement
-   * @returns {{username: string, displayName: string}}
-   */
-  function extractAuthorInfoBilibili(dynamicElement: Element): AuthorInfo {
-    const nameSelectors = ['.bili-dyn-title__text', '.dyn-card-opus__head__name', '.user-name'];
-
-    for (const selector of nameSelectors) {
-      const nameElement = dynamicElement.querySelector(selector);
-      if (nameElement) {
-        const name = (nameElement as HTMLElement).innerText.trim();
-        return {
-          username: name,
-          displayName: name,
-        };
-      }
-    }
-
-    return { username: '', displayName: '' };
-  }
-
-  /**
-   * Parse abbreviated Chinese number strings to integers.
-   * "1.2万" → 12000, "3千" → 3000, "123" → 123
-   */
-  function parseCountText(text: string): number | undefined {
-    if (!text) return undefined;
-    const clean = text.trim().replace(/,/g, '');
-    if (!clean) return undefined;
-
-    const wan = clean.match(/^([\d.]+)万$/);
-    if (wan) return Math.round(parseFloat(wan[1]) * 10000);
-
-    const qian = clean.match(/^([\d.]+)千$/);
-    if (qian) return Math.round(parseFloat(qian[1]) * 1000);
-
-    const yi = clean.match(/^([\d.]+)亿$/);
-    if (yi) return Math.round(parseFloat(yi[1]) * 100000000);
-
-    const n = parseInt(clean, 10);
-    return isNaN(n) ? undefined : n;
-  }
-
-  /**
-   * Extract engagement metrics from a dynamic element.
-   * Bilibili footer action order: [0]=repost, [1]=comment, [2]=like
-   */
-  function extractEngagementBilibili(dynamicElement: Element): EngagementMetrics {
-    const engagement: EngagementMetrics = {};
-
-    const actions = dynamicElement.querySelectorAll(
-      '.bili-dyn-item__footer .bili-dyn-action, .bili-dyn-action__main .bili-dyn-action',
-    );
-
-    if (actions.length >= 3) {
-      // action[0] = repost, action[1] = comment, action[2] = like
-      const textEls = [
-        actions[0].querySelector('.bili-dyn-action__text'),
-        actions[1].querySelector('.bili-dyn-action__text'),
-        actions[2].querySelector('.bili-dyn-action__text'),
-      ];
-      const repostText = (textEls[0] as HTMLElement)?.innerText?.trim() || '';
-      const commentText = (textEls[1] as HTMLElement)?.innerText?.trim() || '';
-      const likeText = (textEls[2] as HTMLElement)?.innerText?.trim() || '';
-
-      // Strip label text ("转发", "评论", "点赞") if present, keep number part
-      const stripLabel = (t: string) => t.replace(/^(转发|评论|点赞)\s*/, '').trim();
-
-      const reposts = parseCountText(stripLabel(repostText));
-      if (reposts !== undefined) engagement.reposts = reposts;
-
-      const comments = parseCountText(stripLabel(commentText));
-      if (comments !== undefined) engagement.comments = comments;
-
-      const likes = parseCountText(stripLabel(likeText));
-      if (likes !== undefined) engagement.likes = likes;
-    }
-
-    // Video play count from video card stat
-    const statEl = dynamicElement.querySelector(
-      '.bili-dyn-card-video__stat, .bili-dyn-card-video .stat-item',
-    ) as HTMLElement;
-    if (statEl) {
-      const viewText = statEl.innerText?.trim() || '';
-      const views = parseCountText(viewText.replace(/^播放\s*/, '').split(/\s+/)[0]);
-      if (views !== undefined) engagement.views = views;
-    }
-
-    return engagement;
-  }
-
-  /**
-   * Collect data from a single dynamic element
-   */
-  function collectDynamicDataBilibili(dynamicElement: Element): CollectedContent {
-    const text = extractDynamicTextBilibili(dynamicElement);
-    const images = extractDynamicImagesBilibili(dynamicElement);
-    const timestamp = extractDynamicTimestampBilibili(dynamicElement);
-    const url = extractDynamicUrlBilibili(dynamicElement);
-    const author = extractAuthorInfoBilibili(dynamicElement);
-    const type = detectDynamicTypeBilibili(dynamicElement);
-    const links = extractBilibiliEmbeddedLinks(dynamicElement);
-    const engagement = extractEngagementBilibili(dynamicElement);
-
-    return {
-      source: 'Bilibili' as const,
-      type,
-      text,
-      images,
-      videos: [],
-      links,
-      timestamp,
-      url,
-      author,
-      collectedAt: new Date().toISOString(),
-      engagement: Object.keys(engagement).length > 0 ? engagement : undefined,
-    };
-  }
-
-  /**
-   * Get the current page's user ID from URL
-   * Bilibili space URL: space.bilibili.com/[UID]
-   */
-  function getCurrentPageUID(): string {
-    const match = window.location.href.match(/space\.bilibili\.com\/(\d+)/);
+  function getAccountFaceHash(): string {
+    const img = document.querySelector('a.avatar img') as HTMLImageElement | null;
+    const src = img?.getAttribute('src') || '';
+    const match = src.match(/bfs\/face\/([0-9a-zA-Z]+)\./);
     return match ? match[1] : '';
   }
 
-  /**
-   * Check if current page is a dynamic page
-   * @returns {boolean}
-   */
-  function isDynamicPage(): boolean {
-    return (
-      window.location.hostname === 't.bilibili.com' ||
-      (window.location.hostname === 'space.bilibili.com' &&
-        window.location.pathname.includes('/dynamic')) ||
-      (window.location.hostname === 'www.bilibili.com' &&
-        window.location.pathname.startsWith('/v/dynamic'))
+  function getAccountDisplayName(): string {
+    const nameElement = document.querySelector(
+      '.up-name, .nickname, .header-popover-avatar .name, [class*="nickname"]',
     );
+    const name = textOf(nameElement);
+    if (name) return name;
+
+    // Existing Bilibili entries store the UID as the display name.
+    return getAccountUid();
   }
 
-  /**
-   * Find the main dynamic on the page
-   * @returns {Element|null}
-   */
-  function findMainDynamicBilibili(): Element | null {
-    // Only collect from dynamic pages
-    if (!isDynamicPage()) {
-      return null;
-    }
+  function getAccountIdentity(): AuthorInfo {
+    const uid = getAccountUid();
+    const faceHash = uid ? '' : getAccountFaceHash();
+    const username = uid || (faceHash ? `bili-face-${faceHash.slice(0, 12)}` : '');
 
-    // On space.bilibili.com/{uid}/dynamic page, find first dynamic item
-    const mainSelectors = ['.bili-dyn-list__item', '.bili-dyn-item', '.dyn-card'];
-
-    for (const selector of mainSelectors) {
-      const element = document.querySelector(selector);
-      if (element) return element;
-    }
-
-    return null;
-  }
-
-  /**
-   * Find all visible dynamics on the page
-   * Only selects top-level list items to avoid duplicates
-   * @returns {Element[]}
-   */
-  function findAllDynamicsBilibili(): Element[] {
-    if (!isDynamicPage()) {
-      return [];
-    }
-    // Only select .bili-dyn-list__item (top-level), not nested .bili-dyn-item
-    const items = document.querySelectorAll('.bili-dyn-list__item');
-    if (items.length > 0) {
-      return Array.from(items);
-    }
-    // Fallback for different page structures
-    return Array.from(
-      document.querySelectorAll(
-        '.bili-dyn-item:not(.bili-dyn-list__item .bili-dyn-item .bili-dyn-item)',
-      ),
-    );
-  }
-
-  /**
-   * Check if current page is the target user's dynamic page
-   */
-  function isTargetURL(targetUIDs: string[]): boolean {
-    if (!targetUIDs || !Array.isArray(targetUIDs) || targetUIDs.length === 0) return false;
-
-    const pageUID = getCurrentPageUID();
-    const isSpaceDynamic =
-      window.location.hostname === 'space.bilibili.com' &&
-      window.location.pathname.includes('/dynamic');
-
-    if (!isSpaceDynamic) return false;
-
-    return targetUIDs.includes(pageUID);
-  }
-
-  /**
-   * Get page info for the popup
-   * @returns {Object}
-   */
-  async function getPageInfo(): Promise<PageInfo> {
-    const dynamics = findAllDynamicsBilibili();
-    const mainDynamic = findMainDynamicBilibili();
-    const pageUID = getCurrentPageUID();
-
-    // Get config to check if this is the target page
-    const response: any = await new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type: 'GET_CONFIG' }, resolve);
-    });
-
-    let targetUIDs = response?.config?.targetBilibiliUser || [];
-    if (typeof targetUIDs === 'string') targetUIDs = [targetUIDs];
-
-    const isMatched = isTargetURL(targetUIDs);
-
+    // The avatar face hash is only a fallback identifier, never a display name.
     return {
-      isTargetPage: isMatched,
-      itemCount: dynamics.length,
-      currentUrl: window.location.href,
-      pageIdentifier: pageUID,
-      // Additional platform-specific data
-      isDynamicPage: isDynamicPage(),
-      hasMainDynamic: mainDynamic !== null,
+      username,
+      displayName: getAccountDisplayName() || 'Bilibili',
     };
   }
 
+  // ---------------------------------------------------------------------------
+  // Card field extraction
+  // ---------------------------------------------------------------------------
+
+  function extractTitle(card: Element): string {
+    const titleElement = card.querySelector('.meta-title .name, .meta-title a, .name');
+    const title = textOf(titleElement);
+    if (title) return title;
+
+    const cover = card.querySelector('a.cover-wrp img, img.cover-img') as HTMLImageElement | null;
+    return (cover?.getAttribute('alt') || '').trim();
+  }
+
+  function extractWorkUrl(card: Element): string {
+    const anchors = [
+      card.querySelector('a.cover-wrp'),
+      card.querySelector('.meta-title a'),
+      card.querySelector('a[href*="/video/"]'),
+      card.querySelector('a[href*="/read/"]'),
+    ];
+
+    for (const anchor of anchors) {
+      const url = normalizeWorkUrl(anchor?.getAttribute('href') || '');
+      if (url) return url;
+    }
+    return '';
+  }
+
+  function extractCover(card: Element): string[] {
+    const cover = card.querySelector('a.cover-wrp img, img.cover-img') as HTMLImageElement | null;
+    const url = normalizeCoverUrl(cover?.getAttribute('src') || cover?.src || '');
+    return url ? [url] : [];
+  }
+
+  function extractDuration(card: Element): string {
+    return textOf(card.querySelector('.duration'));
+  }
+
+  function extractPublishTime(card: Element): string {
+    const dateElement = card.querySelector('.pubdate .date') || card.querySelector('.pubdate');
+    return formatPublishTime(textOf(dateElement));
+  }
+
   /**
-   * Auto-collect ALL visible dynamics on page load
+   * Map every stat slot of the card onto engagement metrics. A zero is a real
+   * measurement and is kept; only missing slots are skipped.
    */
+  function extractEngagement(card: Element): EngagementMetrics | undefined {
+    const stats = Array.from(card.querySelectorAll('.meta-footer .view-stat, .view-stat'));
+    if (stats.length === 0) return undefined;
+
+    const engagement: EngagementMetrics = {};
+    for (const stat of stats) {
+      const key = STAT_TITLES[(stat.getAttribute('title') || '').trim()];
+      if (!key) continue;
+
+      const value = parseStatValue(textOf(stat.querySelector('.icon-text')) || textOf(stat));
+      if (value !== undefined) engagement[key] = value;
+    }
+
+    return Object.keys(engagement).length > 0 ? engagement : undefined;
+  }
+
+  function collectArchiveDataBilibili(card: Element): CollectedContent | null {
+    const title = extractTitle(card);
+    const url = extractWorkUrl(card);
+    if (!title || !url) return null;
+
+    const duration = extractDuration(card);
+    const timestamp = extractPublishTime(card) || new Date().toISOString();
+    const author = getAccountIdentity();
+
+    // 图文 works live under /read/, everything else is a video submission.
+    const type: ContentType = duration || !url.includes('/read/') ? 'video' : 'article';
+
+    return {
+      source: 'Bilibili',
+      type,
+      text: title,
+      images: extractCover(card),
+      videos: [],
+      links: [url],
+      tags: [],
+      timestamp,
+      url,
+      author: { username: author.username, displayName: author.displayName },
+      collectedAt: new Date().toISOString(),
+      engagement: extractEngagement(card),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Collection
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Find every work card in the 稿件管理 list. Only the current page of the
+   * list is rendered, so this returns the visible batch.
+   */
+  function findAllArchivesBilibili(): Element[] {
+    if (!isUploadManagerPage()) return [];
+
+    const scoped = Array.from(document.querySelectorAll('.article-list_wrap .article-card'));
+    return scoped.length > 0 ? scoped : Array.from(document.querySelectorAll('.article-card'));
+  }
+
+  function collectAllBilibili(): CollectedContent[] {
+    const seen = new Set<string>();
+    const results: CollectedContent[] = [];
+
+    for (const card of findAllArchivesBilibili()) {
+      const content = collectArchiveDataBilibili(card);
+      if (!content) continue;
+      if (seen.has(content.url)) continue;
+      seen.add(content.url);
+      results.push(content);
+    }
+
+    return results;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Page detection
+  // ---------------------------------------------------------------------------
+
+  function isUploadManagerPage(): boolean {
+    return (
+      window.location.hostname === CREATOR_HOST &&
+      window.location.pathname.indexOf(UPLOAD_MANAGER_PATH) === 0
+    );
+  }
+
+  async function getPageInfo(): Promise<PageInfo> {
+    if (!isUploadManagerPage()) {
+      return {
+        isTargetPage: false,
+        itemCount: 0,
+        currentUrl: window.location.href,
+      };
+    }
+
+    const author = getAccountIdentity();
+    return {
+      isTargetPage: true,
+      itemCount: findAllArchivesBilibili().length,
+      currentUrl: window.location.href,
+      pageIdentifier: author.username || author.displayName,
+      accountName: author.displayName,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Auto-collect
+  // ---------------------------------------------------------------------------
+
   async function tryAutoCollect(): Promise<void> {
-    // 0. Get config and check if target user is configured
+    if (!isUploadManagerPage()) return;
+
     const response: any = await new Promise((resolve) => {
       chrome.runtime.sendMessage({ type: 'GET_CONFIG' }, resolve);
     });
 
-    if (!response || !response.config) return;
-    const config = response.config;
+    const config = response?.config;
+    if (!config) return;
 
-    let targetUIDs = config.targetBilibiliUser;
-    if (typeof targetUIDs === 'string') targetUIDs = [targetUIDs];
-
-    if (!targetUIDs || targetUIDs.length === 0) {
-      console.log('[Synapse] Target Bilibili user not configured, skipping auto-collect');
+    const enabledSources: string[] = config.enabledSources || [];
+    if (!enabledSources.includes('bilibili')) {
+      console.log('[Synapse] Bilibili auto-collect disabled');
       return;
     }
 
-    // 1. isTargetURL check
-    if (!isTargetURL(targetUIDs)) {
-      return;
-    }
-
-    // 2. Check interval
     const interval = config.collectIntervalMinutes ?? 240;
     const lastCollectForSource = config.lastCollectTimes?.bilibili;
     const lastCollect = lastCollectForSource ? new Date(lastCollectForSource).getTime() : 0;
-    const now = Date.now();
 
     if (interval > 0 && lastCollect > 0) {
-      const minsSinceLast = (now - lastCollect) / (1000 * 60);
+      const minsSinceLast = (Date.now() - lastCollect) / (1000 * 60);
       if (minsSinceLast < interval) {
         console.log(
           `[Synapse] Skipping auto-collect for Bilibili: last collect was ${minsSinceLast.toFixed(2)} mins ago (interval: ${interval}m)`,
@@ -654,58 +351,37 @@
       }
     }
 
-    // 3. Get page elements (Wait for content to load)
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    const allDynamics = findAllDynamicsBilibili();
+    // The list is rendered asynchronously after the page shell.
+    await sleep(1500);
 
-    if (allDynamics.length === 0) {
-      console.log('[Synapse] No dynamics found to collect');
+    const contents = collectAllBilibili();
+    if (contents.length === 0) {
+      console.log('[Synapse] Bilibili: no works found on the upload manager page');
       return;
     }
 
-    const pageUID = getCurrentPageUID();
+    console.log(`[Synapse] Bilibili: collecting ${contents.length} works`);
 
-    // 4. Parse content
-    const allContent = allDynamics
-      .map((element) => {
-        const data = collectDynamicDataBilibili(element);
-        // Add UID as username for target user verification
-        data.author = { username: pageUID, displayName: pageUID };
-        return data;
-      })
-      .filter((data) => data.text && data.text.trim().length > 0);
-
-    // 5. Send to background for saving
     chrome.runtime.sendMessage(
       {
         type: 'CONTENT_TO_BG_PROCESS',
-        contents: allContent,
-        pageUID: pageUID,
+        contents,
+        pageUID: getAccountIdentity().username,
       },
-      (response) => {
-        if (response?.success) {
-          console.log(`[Synapse] Bilibili auto-collected ${response.collected} items`);
+      (result) => {
+        if (result?.success) {
+          console.log(`[Synapse] Bilibili auto-collected ${result.collected} items`);
+        } else {
+          console.log('[Synapse] Bilibili auto-collect failed', result?.error);
         }
       },
     );
   }
 
-  /**
-   * Initialization logic
-   *
-   * Collection is triggered by:
-   * - Initial page load
-   * - URL changes (SPA navigation)
-   * - Manual collection from popup
-   *
-   * No scroll-triggered collection.
-   */
-  // Initialization logic
-  chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY', source: 'bilibili' });
-  tryAutoCollect();
+  // ---------------------------------------------------------------------------
+  // Message listeners
+  // ---------------------------------------------------------------------------
 
-  let lastUrl = window.location.href;
-  // Listen for messages from popup/background
   chrome.runtime.onMessage.addListener(
     (
       message: any,
@@ -713,47 +389,52 @@
       sendResponse: (response?: any) => void,
     ) => {
       if (message.type === 'POP_TO_CONTENT_COLLECT') {
-        const pageUID = getCurrentPageUID();
-        const allDynamics = findAllDynamicsBilibili();
-
-        if (allDynamics.length === 0) {
-          sendResponse({ success: false, error: 'No dynamics found on page' });
+        if (!isUploadManagerPage()) {
+          sendResponse({ success: false, error: 'Not a Bilibili upload manager page' });
           return true;
         }
 
-        const allContent = allDynamics
-          .map((element) => {
-            const data = collectDynamicDataBilibili(element);
-            data.author = { username: pageUID, displayName: pageUID };
-            return data;
-          })
-          .filter((data) => data.text && data.text.trim().length > 0);
+        const contents = collectAllBilibili();
+        if (contents.length === 0) {
+          sendResponse({ success: false, error: 'No works found on page' });
+          return true;
+        }
 
-        // Send to background for processing
         chrome.runtime.sendMessage(
           {
             type: 'CONTENT_TO_BG_PROCESS',
-            contents: allContent,
-            pageUID: pageUID,
+            contents,
+            pageUID: getAccountIdentity().username,
           },
-          (response) => {
-            sendResponse(response);
-          },
+          (response) => sendResponse(response),
         );
-        return true; // Keep channel open for async response
-      } else if (message.type === 'GET_PAGE_INFO') {
+        return true;
+      }
+
+      if (message.type === 'GET_PAGE_INFO') {
         getPageInfo().then((info) => sendResponse(info));
         return true;
       }
+
       return true;
     },
   );
-  // Listen for URL changes (for SPA navigation)
+
+  // ---------------------------------------------------------------------------
+  // Init
+  // ---------------------------------------------------------------------------
+
+  chrome.runtime.sendMessage({ type: 'CONTENT_SCRIPT_READY', source: 'bilibili' });
+  tryAutoCollect();
+
+  let lastUrl = window.location.href;
   const observer = new MutationObserver(() => {
     if (window.location.href !== lastUrl) {
       lastUrl = window.location.href;
       tryAutoCollect();
     }
   });
-  observer.observe(document.body, { childList: true, subtree: true });
+  if (document.body) {
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
 })();

@@ -17,10 +17,15 @@ interface EngagementMetrics {
   reads?: number;    // 阅读量 (WXH)
   views?: number;    // 播放量 (Bilibili video)
   collects?: number; // 收藏 (Bilibili)
+  danmaku?: number;  // 弹幕 (Bilibili, Douyin)
+  coins?: number;    // 投币/硬币 (Bilibili)
+  fans?: number;     // 吸粉量 (Douyin)
+  coverClickRate?: number; // 封面点击率, percent: 6.51 means 6.51% (Douyin)
+  avgPlayRatio?: number;   // 平均播放占比, percent (Douyin)
 }
 
 interface CollectedContent {
-  source: 'X' | 'Bilibili' | 'QZone' | 'Weibo' | 'Redbook' | 'ZSXQ' | 'YouTube' | 'WXH';
+  source: 'X' | 'Bilibili' | 'QZone' | 'Weibo' | 'Redbook' | 'Douyin' | 'ZSXQ' | 'YouTube' | 'WXH';
   type?: ContentType;
   text: string;
   images: string[];
@@ -72,6 +77,7 @@ interface AppConfig {
   targetQZoneUser: string[];
   targetWeiboUser: string[];
   targetRedbookUser: string[];
+  targetDouyinUser?: string[];
   targetZsxqGroup?: string[];
   targetYoutubeChannel?: string[];
   targetWxhAlbum?: string[];

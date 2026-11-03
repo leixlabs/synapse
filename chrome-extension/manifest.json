@@ -2,13 +2,17 @@
   "manifest_version": 3,
   "name": "Synapse Collector",
   "version": "1.0.0",
-  "description": "Aggregate your thoughts from X.com, Bilibili, Weibo, QZone, Redbook, ZSXQ, YouTube and WeChat to a local Synapse server",
+  "description": "Aggregate your thoughts from X.com, Bilibili, Weibo, QZone, Redbook, Douyin, ZSXQ, YouTube and WeChat to a local Synapse server",
   "permissions": ["storage", "activeTab", "scripting", "webNavigation"],
   "host_permissions": [
     "https://x.com/*",
     "https://twitter.com/*",
     "https://www.bilibili.com/*",
     "https://space.bilibili.com/*",
+    "https://member.bilibili.com/*",
+    "https://i0.hdslb.com/*",
+    "https://i1.hdslb.com/*",
+    "https://i2.hdslb.com/*",
     "https://weibo.com/*",
     "https://www.weibo.com/*",
     "https://m.weibo.com/*",
@@ -17,6 +21,10 @@
     "https://*.qzone.qq.com/*",
     "https://user.qzone.qq.com/*",
     "https://www.xiaohongshu.com/*",
+    "https://creator.xiaohongshu.com/*",
+    "https://*.xhscdn.com/*",
+    "https://creator.douyin.com/*",
+    "https://*.douyinpic.com/*",
     "https://wx.zsxq.com/*",
     "https://*.zsxq.com/*",
     "https://www.youtube.com/*",
@@ -44,7 +52,7 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.bilibili.com/*", "https://space.bilibili.com/*"],
+      "matches": ["https://member.bilibili.com/*"],
       "js": ["dist/content/bilibili-collector.js"],
       "run_at": "document_idle"
     },
@@ -60,8 +68,13 @@
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://www.xiaohongshu.com/*"],
+      "matches": ["https://creator.xiaohongshu.com/*"],
       "js": ["dist/content/redbook-collector.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://creator.douyin.com/*"],
+      "js": ["dist/content/douyin-collector.js"],
       "run_at": "document_idle"
     },
     {

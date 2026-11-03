@@ -1,5 +1,6 @@
 ---
 import Analytics from "@vercel/analytics/astro";
+import { GITHUB_URL } from "../lib/site";
 
 interface Props {
   title: string;
@@ -21,7 +22,6 @@ const fullTitle = title.toLowerCase().includes("synapse")
 const canonicalUrl = Astro.url.href;
 const ogImage = new URL(image, Astro.site).href;
 
-const GITHUB_URL = "https://github.com/0xkamalei/synapse";
 const path = Astro.url.pathname;
 const isAbout = path.startsWith("/about");
 ---

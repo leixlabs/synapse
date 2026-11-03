@@ -62,7 +62,7 @@ chrome-extension/
 ├── dist/                      # Compiled JavaScript output
 ├── content/                   # Content scripts for different platforms
 │   ├── x-collector.ts        # Extracts tweets from X.com
-│   ├── bilibili-collector.ts # Extracts dynamics from Bilibili
+│   ├── bilibili-collector.ts # Extracts works + metrics from the Bilibili creator center
 │   ├── qzone-collector.ts    # Extracts feeds from QZone
 │   └── collector.test.ts     # Integration tests
 ├── background/

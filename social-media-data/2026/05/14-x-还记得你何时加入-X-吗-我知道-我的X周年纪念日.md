@@ -6,7 +6,7 @@ type: "image"
 title: "还记得你何时加入 X 吗？我知道！#我的X周年纪念日"
 url: "https://x.com/leigoto/status/2055067464111960307"
 original_date: "2026-05-14T23:27:19.000Z"
-collected_at: "2026-10-22T07:17:27.848Z"
+collected_at: "2026-11-03T08:35:28.667Z"
 author_username: "leigoto"
 author_display_name: "散人阿磊"
 tags:
@@ -14,7 +14,7 @@ tags:
 images:
   - "images/76c19369f3ec4164_0.jpg"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 还记得你何时加入 X 吗？我知道！#我的X周年纪念日

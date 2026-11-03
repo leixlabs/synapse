@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -25,12 +26,17 @@ type AuthorInfo struct {
 
 // EngagementMetrics mirrors the extension's EngagementMetrics interface.
 type EngagementMetrics struct {
-	Likes    *int `json:"likes,omitempty"`
-	Comments *int `json:"comments,omitempty"`
-	Reposts  *int `json:"reposts,omitempty"`
-	Reads    *int `json:"reads,omitempty"`
-	Views    *int `json:"views,omitempty"`
-	Collects *int `json:"collects,omitempty"`
+	Likes          *int     `json:"likes,omitempty"`
+	Comments       *int     `json:"comments,omitempty"`
+	Reposts        *int     `json:"reposts,omitempty"`
+	Reads          *int     `json:"reads,omitempty"`
+	Views          *int     `json:"views,omitempty"`
+	Collects       *int     `json:"collects,omitempty"`
+	Danmaku        *int     `json:"danmaku,omitempty"`
+	Coins          *int     `json:"coins,omitempty"`
+	Fans           *int     `json:"fans,omitempty"`
+	CoverClickRate *float64 `json:"coverClickRate,omitempty"`
+	AvgPlayRatio   *float64 `json:"avgPlayRatio,omitempty"`
 }
 
 // CollectedContent mirrors the Chrome extension's CollectedContent interface.
@@ -217,7 +223,9 @@ func metricsHasValues(e *EngagementMetrics) bool {
 		return false
 	}
 	return e.Views != nil || e.Likes != nil || e.Comments != nil ||
-		e.Reposts != nil || e.Reads != nil || e.Collects != nil
+		e.Reposts != nil || e.Reads != nil || e.Collects != nil ||
+		e.Danmaku != nil || e.Coins != nil || e.Fans != nil ||
+		e.CoverClickRate != nil || e.AvgPlayRatio != nil
 }
 
 // SaveMetrics writes the engagement metrics of an item to a separate Markdown
@@ -354,6 +362,16 @@ func buildMetricsMarkdown(hashID string, c CollectedContent, contentRelPath, upd
 	wi("reposts", e.Reposts)
 	wi("reads", e.Reads)
 	wi("collects", e.Collects)
+	wi("danmaku", e.Danmaku)
+	wi("coins", e.Coins)
+	wi("fans", e.Fans)
+	wf2 := func(key string, val *float64) {
+		if val != nil {
+			fmt.Fprintf(&sb, "%s: %s\n", key, strconv.FormatFloat(*val, 'f', -1, 64))
+		}
+	}
+	wf2("cover_click_rate_pct", e.CoverClickRate)
+	wf2("avg_play_ratio_pct", e.AvgPlayRatio)
 	sb.WriteString("---\n")
 
 	return sb.String()

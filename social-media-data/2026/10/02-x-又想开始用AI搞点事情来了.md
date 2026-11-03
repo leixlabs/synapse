@@ -6,11 +6,11 @@ type: "text"
 title: "又想开始用AI搞点事情来了！"
 url: "https://x.com/leigoto/status/2105963885224444018"
 original_date: "2026-10-02T10:11:31.000Z"
-collected_at: "2026-10-22T07:17:27.105Z"
+collected_at: "2026-11-03T08:35:28.664Z"
 author_username: "leigoto"
 author_display_name: "散人阿磊"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 又想开始用AI搞点事情来了！

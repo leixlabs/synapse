@@ -92,7 +92,7 @@ interface AppConfig {
 - 接口定义：[collector.interface.ts](collector.interface.ts)
 - 实现示例：
   - [x-collector.ts](x-collector.ts) - 简单文本提取
-  - [bilibili-collector.ts](bilibili-collector.ts) - 视频封面处理
+  - [bilibili-collector.ts](bilibili-collector.ts) - 创作中心稿件列表 + 运营数据
   - [zsxq-collector.ts](zsxq-collector.ts) - 复杂 DOM 处理、表情/链接还原
 
 **核心函数**（参考其他 collector）：

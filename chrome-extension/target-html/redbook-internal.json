@@ -1,0 +1,83 @@
+[
+  {
+    "source": "Redbook",
+    "type": "image",
+    "text": "无标题笔记",
+    "images": [
+      "https://sns-na-i1.xhscdn.com/1040g2sg326s6d1ms46e05p7j6nfh84fedko41m8"
+    ],
+    "videos": [],
+    "links": [
+      "https://www.xiaohongshu.com/explore/6ae1cd0a0000000034037f43"
+    ],
+    "tags": [],
+    "timestamp": "2026-10-28T18:23:00+08:00",
+    "url": "https://www.xiaohongshu.com/explore/6ae1cd0a0000000034037f43",
+    "author": {
+      "username": "散人阿磊",
+      "displayName": "散人阿磊"
+    },
+    "collectedAt": "2024-01-01T00:00:00.000Z",
+    "engagement": {
+      "views": 15,
+      "comments": 0,
+      "likes": 1,
+      "collects": 0,
+      "reposts": 0
+    }
+  },
+  {
+    "source": "Redbook",
+    "type": "video",
+    "text": "自用：识别字幕平替软件",
+    "images": [
+      "https://sns-na-i1.xhscdn.com/1040g008326qoov6lk6005p7j6nfh84fe7r139s8"
+    ],
+    "videos": [],
+    "links": [
+      "https://www.xiaohongshu.com/explore/6ae059e2000000001500998c"
+    ],
+    "tags": [],
+    "timestamp": "2026-10-27T15:59:00+08:00",
+    "url": "https://www.xiaohongshu.com/explore/6ae059e2000000001500998c",
+    "author": {
+      "username": "散人阿磊",
+      "displayName": "散人阿磊"
+    },
+    "collectedAt": "2024-01-01T00:00:00.000Z",
+    "engagement": {
+      "views": 183,
+      "comments": 0,
+      "likes": 2,
+      "collects": 3,
+      "reposts": 1
+    }
+  },
+  {
+    "source": "Redbook",
+    "type": "video",
+    "text": "将视频和音频转换为文本",
+    "images": [
+      "https://sns-na-i1.xhscdn.com/spectrum/1040g34o31t8lln2u5a105p7j6nfh84feqf3ohq0"
+    ],
+    "videos": [],
+    "links": [
+      "https://www.xiaohongshu.com/explore/69a55f3f0000000015032d19"
+    ],
+    "tags": [],
+    "timestamp": "2026-03-02T17:58:00+08:00",
+    "url": "https://www.xiaohongshu.com/explore/69a55f3f0000000015032d19",
+    "author": {
+      "username": "散人阿磊",
+      "displayName": "散人阿磊"
+    },
+    "collectedAt": "2024-01-01T00:00:00.000Z",
+    "engagement": {
+      "views": 408,
+      "comments": 2,
+      "likes": 10,
+      "collects": 14,
+      "reposts": 1
+    }
+  }
+]

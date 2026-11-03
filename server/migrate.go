@@ -128,6 +128,12 @@ func migrateContentFile(cfg *Config, path string, apply bool) (bool, error) {
 		case "engagement_collects":
 			engagement.Collects = parseIntPtr(raw)
 			hasMetrics = true
+		case "engagement_danmaku":
+			engagement.Danmaku = parseIntPtr(raw)
+			hasMetrics = true
+		case "engagement_coins":
+			engagement.Coins = parseIntPtr(raw)
+			hasMetrics = true
 		default:
 			kept = append(kept, line)
 		}

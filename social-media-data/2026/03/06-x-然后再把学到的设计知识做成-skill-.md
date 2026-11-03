@@ -6,11 +6,11 @@ type: "text"
 title: "然后再把学到的设计知识做成 skill，就可以应用到自己的项目了"
 url: "https://x.com/leigoto/status/2029953338285138291"
 original_date: "2026-03-06T16:12:45.000Z"
-collected_at: "2026-10-22T07:17:27.105Z"
+collected_at: "2026-11-03T08:35:28.664Z"
 author_username: "leigoto"
 author_display_name: "散人阿磊"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 然后再把学到的设计知识做成 skill，就可以应用到自己的项目了

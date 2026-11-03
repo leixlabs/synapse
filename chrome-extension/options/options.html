@@ -139,6 +139,32 @@
         <!-- China Platforms -->
         <div class="group-label" style="margin-top: 24px;">🇨🇳 中国平台</div>
 
+        <!-- WXH (WeChat) -->
+        <div class="platform-card" data-platform="wxh">
+          <div class="platform-header">
+            <div class="platform-info">
+              <span class="platform-icon">💬</span>
+              <span class="platform-name">微信公众号 WeChat</span>
+            </div>
+            <div class="platform-actions">
+              <button type="button" class="open-btn" data-platform="wxh" title="Open WeChat page">↗</button>
+              <label class="toggle">
+                <input type="checkbox" id="enableWxh" class="platform-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="platform-config" id="configWxh">
+            <div class="input-group">
+              <p class="hint">
+                采集当前登录公众号的「发表记录」页面，无需配置账号。
+                打开 <a href="https://mp.weixin.qq.com/" target="_blank" rel="noopener">mp.weixin.qq.com</a>
+                并进入「内容管理 → 发表记录」后即可自动采集。
+              </p>
+            </div>
+          </div>
+        </div>
+
         <!-- Bilibili -->
         <div class="platform-card" data-platform="bilibili">
           <div class="platform-header">
@@ -155,11 +181,64 @@
             </div>
           </div>
           <div class="platform-config" id="configBilibili">
-            <div class="input-group multi-input-group" data-platform="bilibili" data-key="targetBilibiliUser">
-              <label>UID(s)</label>
-              <div class="input-list"></div>
-              <button type="button" class="add-btn secondary-btn">+ Add Account</button>
-              <p class="hint">个人主页 URL: space.bilibili.com/[UID]</p>
+            <div class="input-group">
+              <p class="hint">
+                采集当前登录账号的「稿件管理」页面，含播放、点赞、弹幕、评论、硬币、收藏、分享等运营数据，无需配置账号。
+                打开 <a href="https://member.bilibili.com/platform/upload-manager/article" target="_blank" rel="noopener">member.bilibili.com</a>
+                并进入「内容管理 → 稿件管理」后即可自动采集。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Redbook -->
+        <div class="platform-card" data-platform="redbook">
+          <div class="platform-header">
+            <div class="platform-info">
+              <span class="platform-icon">📕</span>
+              <span class="platform-name">小红书 Redbook</span>
+            </div>
+            <div class="platform-actions">
+              <button type="button" class="open-btn" data-platform="redbook" title="Open Redbook page">↗</button>
+              <label class="toggle">
+                <input type="checkbox" id="enableRedbook" class="platform-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="platform-config" id="configRedbook">
+            <div class="input-group">
+              <p class="hint">
+                采集当前登录账号的「笔记管理」页面，含观看 / 评论 / 点赞 / 收藏 / 转发等运营数据，无需配置账号。
+                打开 <a href="https://creator.xiaohongshu.com/new/note-manager" target="_blank" rel="noopener">creator.xiaohongshu.com/new/note-manager</a>
+                后即可自动采集。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Douyin -->
+        <div class="platform-card" data-platform="douyin">
+          <div class="platform-header">
+            <div class="platform-info">
+              <span class="platform-icon">🎵</span>
+              <span class="platform-name">抖音 Douyin</span>
+            </div>
+            <div class="platform-actions">
+              <button type="button" class="open-btn" data-platform="douyin" title="Open Douyin Creator Center">↗</button>
+              <label class="toggle">
+                <input type="checkbox" id="enableDouyin" class="platform-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+            </div>
+          </div>
+          <div class="platform-config" id="configDouyin">
+            <div class="input-group">
+              <p class="hint">
+                采集当前登录账号的「内容管理」页面，无需配置账号。
+                打开 <a href="https://creator.douyin.com/creator-micro/content/manage" target="_blank" rel="noopener">抖音创作者服务中心</a>
+                后即可自动采集。
+              </p>
             </div>
           </div>
         </div>
@@ -189,27 +268,27 @@
           </div>
         </div>
 
-        <!-- Redbook -->
-        <div class="platform-card" data-platform="redbook">
+        <!-- ZSXQ -->
+        <div class="platform-card" data-platform="zsxq">
           <div class="platform-header">
             <div class="platform-info">
-              <span class="platform-icon">📕</span>
-              <span class="platform-name">小红书 Redbook</span>
+              <span class="platform-icon">🌐</span>
+              <span class="platform-name">知识星球 ZSXQ</span>
             </div>
             <div class="platform-actions">
-              <button type="button" class="open-btn" data-platform="redbook" title="Open Redbook page">↗</button>
+              <button type="button" class="open-btn" data-platform="zsxq" title="Open ZSXQ page">↗</button>
               <label class="toggle">
-                <input type="checkbox" id="enableRedbook" class="platform-toggle" />
+                <input type="checkbox" id="enableZsxq" class="platform-toggle" />
                 <span class="toggle-slider"></span>
               </label>
             </div>
           </div>
-          <div class="platform-config" id="configRedbook">
-            <div class="input-group multi-input-group" data-platform="redbook" data-key="targetRedbookUser">
-              <label>User ID(s)</label>
+          <div class="platform-config" id="configZsxq">
+            <div class="input-group multi-input-group" data-platform="zsxq" data-key="targetZsxqGroup">
+              <label>Group ID(s)</label>
               <div class="input-list"></div>
-              <button type="button" class="add-btn secondary-btn">+ Add Account</button>
-              <p class="hint">个人主页 URL: xiaohongshu.com/user/profile/[UserID]</p>
+              <button type="button" class="add-btn secondary-btn">+ Add Group</button>
+              <p class="hint">星球页面 URL: wx.zsxq.com/group/[GroupID]</p>
             </div>
           </div>
         </div>
@@ -238,56 +317,6 @@
           </div>
         </div>
 
-        <!-- WXH (WeChat) -->
-        <div class="platform-card" data-platform="wxh">
-          <div class="platform-header">
-            <div class="platform-info">
-              <span class="platform-icon">💬</span>
-              <span class="platform-name">微信公众号 WeChat</span>
-            </div>
-            <div class="platform-actions">
-              <button type="button" class="open-btn" data-platform="wxh" title="Open WeChat page">↗</button>
-              <label class="toggle">
-                <input type="checkbox" id="enableWxh" class="platform-toggle" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-          <div class="platform-config" id="configWxh">
-            <div class="input-group">
-              <p class="hint">
-                采集当前登录公众号的「发表记录」页面，无需配置账号。
-                打开 <a href="https://mp.weixin.qq.com/" target="_blank" rel="noopener">mp.weixin.qq.com</a>
-                并进入「内容管理 → 发表记录」后即可自动采集。
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- ZSXQ -->
-        <div class="platform-card" data-platform="zsxq">
-          <div class="platform-header">
-            <div class="platform-info">
-              <span class="platform-icon">🌐</span>
-              <span class="platform-name">知识星球 ZSXQ</span>
-            </div>
-            <div class="platform-actions">
-              <button type="button" class="open-btn" data-platform="zsxq" title="Open ZSXQ page">↗</button>
-              <label class="toggle">
-                <input type="checkbox" id="enableZsxq" class="platform-toggle" />
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-          </div>
-          <div class="platform-config" id="configZsxq">
-            <div class="input-group multi-input-group" data-platform="zsxq" data-key="targetZsxqGroup">
-              <label>Group ID(s)</label>
-              <div class="input-list"></div>
-              <button type="button" class="add-btn secondary-btn">+ Add Group</button>
-              <p class="hint">星球页面 URL: wx.zsxq.com/group/[GroupID]</p>
-            </div>
-          </div>
-        </div>
       </section>
 
       <!-- Footer Actions (always visible) -->

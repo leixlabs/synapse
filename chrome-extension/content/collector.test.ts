@@ -203,7 +203,11 @@ afterEach(() => {
 });
 
 function loadHtmlToWindow(window: Window, htmlPath: string) {
-  const html = readFileSync(htmlPath, 'utf-8');
+  let html = readFileSync(htmlPath, 'utf-8');
+  // happy-dom's parser drops everything after an empty <style> tag nested in an
+  // <svg> (Bilibili's icon sprite ships one). Chrome handles it fine, so strip
+  // them here rather than distorting the fixture.
+  html = html.replace(/<style[^>]*><\/style>/g, '');
   (window.document as any).write(html);
 }
 
@@ -236,18 +240,20 @@ test('X.com Collector', async () => {
 });
 
 test('Bilibili Collector', () => {
-  const window = createTestWindow('https://t.bilibili.com/');
+  const window = createTestWindow('https://member.bilibili.com/platform/upload-manager/article');
   loadCollector(window, 'dist/content/bilibili-collector.js');
 
-  const htmlPath = join(TARGET_HTML_DIR, 'bilibili.html');
-  const jsonPath = join(TARGET_HTML_DIR, 'bilibili.json');
+  const htmlPath = join(TARGET_HTML_DIR, 'bilibili-internal.html');
+  const jsonPath = join(TARGET_HTML_DIR, 'bilibili-internal.json');
 
   loadHtmlToWindow(window, htmlPath);
 
-  const dynamics = (window as any).findAllDynamicsBilibili();
-  expect(dynamics.length).toBeGreaterThan(0);
+  const cards = (window as any).findAllArchivesBilibili();
+  expect(cards.length).toBeGreaterThan(0);
 
-  const results = dynamics.map((d: any) => (window as any).collectDynamicDataBilibili(d));
+  const results = cards
+    .map((c: any) => (window as any).collectArchiveDataBilibili(c))
+    .filter(Boolean);
 
   results.forEach((r: any) => {
     r.collectedAt = '2024-01-01T00:00:00.000Z';
@@ -256,10 +262,10 @@ test('Bilibili Collector', () => {
   if (!existsSync(jsonPath)) {
     writeFileSync(jsonPath, JSON.stringify(results, null, 2));
     console.log(`Created ${jsonPath}. Please review it.`);
+  } else {
+    const expected = JSON.parse(readFileSync(jsonPath, 'utf-8'));
+    expect(results).toEqual(expected);
   }
-
-  const expected = JSON.parse(readFileSync(jsonPath, 'utf-8'));
-  expect(results).toEqual(expected);
 });
 
 test('QZone Collector', () => {
@@ -314,23 +320,20 @@ test('Weibo Collector', () => {
   }
 });
 
-test('Redbook Collector', async () => {
-  const window = createTestWindow(
-    'https://www.xiaohongshu.com/user/profile/64f335df00000000050011ee',
-  );
+test('Redbook Collector', () => {
+  const window = createTestWindow('https://creator.xiaohongshu.com/new/note-manager');
 
   loadCollector(window, 'dist/content/redbook-collector.js');
 
-  const htmlPath = join(TARGET_HTML_DIR, 'redbook.html');
-  const jsonPath = join(TARGET_HTML_DIR, 'redbook.json');
+  const htmlPath = join(TARGET_HTML_DIR, 'redbook-internal.html');
+  const jsonPath = join(TARGET_HTML_DIR, 'redbook-internal.json');
 
   loadHtmlToWindow(window, htmlPath);
 
-  const notes = (window as any).findAllPostsRedbook();
+  const notes = (window as any).findAllNotesRedbook();
   expect(notes.length).toBeGreaterThan(0);
 
-  // collectNoteDataRedbook is now async
-  const results = await Promise.all(notes.map((n: any) => (window as any).collectNoteDataRedbook(n)));
+  const results = notes.map((n: any) => (window as any).collectNoteDataRedbook(n));
 
   results.forEach((r: any) => {
     r.collectedAt = '2024-01-01T00:00:00.000Z';
@@ -343,6 +346,91 @@ test('Redbook Collector', async () => {
     const expected = JSON.parse(readFileSync(jsonPath, 'utf-8'));
     expect(results).toEqual(expected);
   }
+});
+
+test('Douyin Collector', () => {
+  const window = createTestWindow('https://creator.douyin.com/creator-micro/content/manage');
+
+  loadCollector(window, 'dist/content/douyin-collector.js');
+
+  const htmlPath = join(TARGET_HTML_DIR, 'douyin.html');
+  const jsonPath = join(TARGET_HTML_DIR, 'douyin.json');
+
+  loadHtmlToWindow(window, htmlPath);
+
+  const works = (window as any).findAllWorksDouyin();
+  expect(works.length).toBeGreaterThan(0);
+
+  const results = works.map((w: any) => (window as any).collectWorkDataDouyin(w));
+
+  results.forEach((r: any) => {
+    r.collectedAt = '2024-01-01T00:00:00.000Z';
+  });
+
+  if (!existsSync(jsonPath)) {
+    writeFileSync(jsonPath, JSON.stringify(results, null, 2));
+    console.log(`Created ${jsonPath}. Please review it.`);
+  } else {
+    const expected = JSON.parse(readFileSync(jsonPath, 'utf-8'));
+    expect(results).toEqual(expected);
+  }
+
+  // Without the list API the work is keyed on time + cover and the URL anchors
+  // back at the console.
+  const withoutId = (window as any).collectWorkDataDouyin(works[0], []);
+  expect(withoutId.url).toContain('/creator-micro/content/manage#work=');
+
+  // With the id resolved from the list API the work gets a playable URL.
+  const pool = [
+    {
+      id: '7702600309545928881',
+      createTime: Math.floor(new Date(results[0].timestamp).getTime() / 1000),
+      desc: results[0].text,
+    },
+  ];
+  const withId = (window as any).collectWorkDataDouyin(works[0], pool);
+  expect(withId.url).toBe('https://www.douyin.com/user/self?modal_id=7702600309545928881');
+  expect(withId.links[0]).toBe('https://www.douyin.com/user/self?modal_id=7702600309545928881');
+  // The identity is consumed so it cannot land on a second card.
+  expect(pool.length).toBe(0);
+});
+
+test('Douyin work ids resolved from the list API', async () => {
+  const window = createTestWindow(
+    'https://creator.douyin.com/creator-micro/content/manage',
+  );
+
+  loadCollector(window, 'dist/content/douyin-collector.js');
+  loadHtmlToWindow(window, join(TARGET_HTML_DIR, 'douyin.html'));
+
+  const works = (window as any).findAllWorksDouyin();
+  const first = (window as any).collectWorkDataDouyin(works[0]);
+
+  // Stand in for the console's own list API: same origin, page cookies.
+  (window as any).fetch = () =>
+    Promise.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          has_more: false,
+          aweme_list: [
+            {
+              aweme_id: '7702600309545928881',
+              create_time: Math.floor(new Date(first.timestamp).getTime() / 1000),
+              desc: first.text,
+            },
+          ],
+        }),
+    });
+
+  const contents = await (window as any).collectAllWorksDouyin();
+  expect(contents[0].url).toBe(
+    'https://www.douyin.com/user/self?modal_id=7702600309545928881',
+  );
+  expect(contents[0].links).toEqual([
+    'https://www.douyin.com/user/self?modal_id=7702600309545928881',
+    'https://www.douyin.com/video/7702600309545928881',
+  ]);
 });
 
 test('ZSXQ Collector', () => {

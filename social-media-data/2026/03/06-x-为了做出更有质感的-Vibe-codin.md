@@ -6,13 +6,13 @@ type: "image"
 title: "为了做出更有质感的 Vibe coding 产品，从今天开始恶补设计知识啦✨"
 url: "https://x.com/leigoto/status/2029950914765934868"
 original_date: "2026-03-06T16:03:07.000Z"
-collected_at: "2026-10-22T07:17:27.845Z"
+collected_at: "2026-11-03T08:35:28.668Z"
 author_username: "leigoto"
 author_display_name: "散人阿磊"
 images:
   - "images/797c6b59ad9a046b_0.png"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 为了做出更有质感的 Vibe coding 产品，从今天开始恶补设计知识啦✨

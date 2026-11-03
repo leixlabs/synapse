@@ -6,13 +6,13 @@ type: "video"
 title: "[视频] OpenClaw卸载不完全？教你彻底清理不留残留 \n【一句话价值总结】 完整演示 OpenClaw 的卸载流程，包括 ..."
 url: "https://www.bilibili.com/video/BV1e8wXz8EP5/"
 original_date: "2026-03-17T16:00:00.000Z"
-collected_at: "2026-10-27T17:22:31.676Z"
+collected_at: "2026-11-03T08:54:54.612Z"
 author_username: "284623903"
 author_display_name: "284623903"
 images:
   - "images/03545104d883e884_0.jpg"
 status: "collected"
-server_version: "1"
+server_version: "2"
 ---
 
 [视频] OpenClaw卸载不完全？教你彻底清理不留残留 
