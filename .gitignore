@@ -18,14 +18,15 @@ dist/
 .cache/
 
 
-synapse-server
+
 *.log
 config.yaml
 
 **/**/public/data
 
-server/server
+
 
 .claude/settings.local.json
 
 server/config.yaml
+server/dist
